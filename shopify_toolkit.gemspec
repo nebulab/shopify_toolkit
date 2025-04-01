@@ -34,6 +34,7 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib"]
 
   spec.add_dependency "thor", ">= 1.3"
+  spec.add_dependency "zeitwerk", ">= 2.7"
   spec.add_dependency "activesupport", ">= 7.0"
   spec.add_dependency "shopify_api", ">= 14.8"
 
