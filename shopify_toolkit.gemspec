@@ -34,6 +34,8 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib"]
 
   spec.add_dependency "thor", ">= 1.3"
+  spec.add_dependency "activesupport", ">= 7.0"
+  spec.add_dependency "shopify_api", ">= 14.8"
 
   # For more information and examples about making a new gem, check out our
   # guide at: https://bundler.io/guides/creating_gem.html
