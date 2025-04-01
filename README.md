@@ -22,7 +22,7 @@ bundle add shopify_toolkit
 
 ## Usage
 
-### Migrating Metafields definitions
+### Migrating Metafields definitions using ActiveRecord Migrations
 
 Within a Rails application created with ShopifyApp, generate a new migration file:
 
@@ -48,6 +48,25 @@ class AddMetafieldDefinitions < ActiveRecord::Migration[7.0]
       remove_metafield :products, :my_metafield
     end
   end
+end
+```
+Then run the migration:
+
+```bash
+rails db:migrate
+```
+
+### Creating a Metafield Schema Definition
+
+You can also create a metafield schema definition file to define your metafields in a more structured way. This is useful for keeping track of your metafields and their definitions.
+
+```rb
+# config/shopify/schema.rb
+
+ShopifyToolkit::MetafieldSchema.define do
+  # Define your metafield schema here
+  # For example:
+  create_metafield :products, :my_metafield, :single_line_text_field, name: "My Metafield"
 end
 ```
 

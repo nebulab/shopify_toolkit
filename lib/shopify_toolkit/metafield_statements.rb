@@ -132,4 +132,12 @@ module ShopifyToolkit::MetafieldStatements
       )
       .tap { handle_shopify_admin_client_errors(_1, "metafieldDefinitionUpdate.userErrors") }
   end
+
+  def self.define(&block)
+    context = Object.new
+    context.extend(self)
+
+    context.instance_eval(&block) if block_given?(&block)
+    context
+  end
 end
