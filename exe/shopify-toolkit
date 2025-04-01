@@ -5,7 +5,7 @@ require 'active_record'
 require 'thor'
 require 'tmpdir'
 
-class ShopifyCSV < Thor
+class ShopifyToolkit::CommandLine < Thor
   RESERVED_COLUMN_NAMES = %w[select type id]
 
   class Result < ActiveRecord::Base
@@ -56,4 +56,4 @@ class ShopifyCSV < Thor
   end
 end
 
-ShopifyCSV.start(ARGV)
+ShopifyToolkit::CommandLine.start(ARGV)
