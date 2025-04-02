@@ -54,6 +54,24 @@ class ShopifyToolkit::CommandLine < Thor
     IRB.conf[:IRB_NAME] = basename
     Result.class_eval { binding.irb(show_code: false) }
   end
+
+  desc "migrate", "Run migrations"
+  def migrate
+    migrator = ShopifyToolkit::Migrator.new
+    migrator.up
+  end
+
+  desc "down", "Run migrations down"
+  def down
+    migrator = ShopifyToolkit::Migrator.new
+    migrator.down
+  end
+
+  desc "redo", "Run migrations down and up again"
+  def redo
+    migrator = ShopifyToolkit::Migrator.new
+    migrator.redo
+  end
 end
 
 ShopifyToolkit::CommandLine.start(ARGV)
