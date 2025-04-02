@@ -22,6 +22,54 @@ bundle add shopify_toolkit
 
 ## Usage
 
+### Migrating Metafields definitions using ActiveRecord Migrations
+
+Within a Rails application created with ShopifyApp, generate a new migration file:
+
+```bash
+rails generate migration AddMetafieldDefinitions
+```
+
+Include the `ShopifyToolkit::MetafieldStatements` module in your migration file
+in order to use the metafield statements:
+
+```ruby
+class AddMetafieldDefinitions < ActiveRecord::Migration[7.0]
+  include ShopifyToolkit::MetafieldStatements
+
+  def up
+    Shop.first!.with_shopify_session do
+      create_metafield :products, :my_metafield, :single_line_text_field, name: "My Metafield"
+    end
+  end
+
+  def down
+    Shop.first!.with_shopify_session do
+      remove_metafield :products, :my_metafield
+    end
+  end
+end
+```
+Then run the migration:
+
+```bash
+rails db:migrate
+```
+
+### Creating a Metafield Schema Definition
+
+You can also create a metafield schema definition file to define your metafields in a more structured way. This is useful for keeping track of your metafields and their definitions.
+
+```rb
+# config/shopify/schema.rb
+
+ShopifyToolkit::MetafieldSchema.define do
+  # Define your metafield schema here
+  # For example:
+  create_metafield :products, :my_metafield, :single_line_text_field, name: "My Metafield"
+end
+```
+
 ### Analyzing a Matrixify CSV Result files
 
 Matrixify is a popular Shopify app that allows you to import/export data from Shopify using CSV files. The CSV files that Matrixify generates are very verbose and can be difficult to work with. This tool allows you to analyze the CSV files and extract the data you need.
