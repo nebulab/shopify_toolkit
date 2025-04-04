@@ -101,8 +101,8 @@ module ShopifyToolkit::MetafieldStatements
       .tap { handle_shopify_admin_client_errors(_1, "metafieldDefinitionDelete.userErrors") }
   end
 
-  def update_metafield(owner_type, key, namespace: :custom, **options)
   log_time \
+  def update_metafield(owner_type, key, namespace: :custom, **options)
     shopify_admin_client
       .query(
         # Documentation: https://shopify.dev/docs/api/admin-graphql/2024-10/mutations/metafieldDefinitionUpdate
