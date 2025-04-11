@@ -54,6 +54,18 @@ class ShopifyToolkit::CommandLine < Thor
     IRB.conf[:IRB_NAME] = basename
     Result.class_eval { binding.irb(show_code: false) }
   end
+
+  desc "schema_load", 'Load schema from "config/shopify/schema.rb"'
+  def schema_load
+    require "./config/environment"
+    ::Shop.sole.with_shopify_session { ShopifyToolkit::Schema.load! }
+  end
+
+  desc "schema_dump", 'Dump schema to "config/shopify/schema.rb"'
+  def schema_dump
+    require "./config/environment"
+    ::Shop.sole.with_shopify_session { ShopifyToolkit::Schema.dump! }
+  end
 end
 
 ShopifyToolkit::CommandLine.start(ARGV)
