@@ -2,6 +2,12 @@
 
 A toolkit for working with Custom Shopify Apps built on Rails.
 
+### Assumptions
+
+- You are using Rails 7.0 or later
+- The custom app is only installed on a single store
+- In order for the schema dump/load to work, you need to have the `shopify_app` gem installed and configured
+
 ## Features/Roadmap
 
 - [x] Shopify/Matrixify CSV tools
