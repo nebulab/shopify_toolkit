@@ -6,9 +6,8 @@ module ShopifyToolkit::Migration::Logging
   end
 
   def announce(message)
-    text = "#{version} #{name}: #{message}"
-    length = [0, 75 - text.length].max
-    write "== %s %s" % [text, "=" * length]
+    length = [0, 75 - message.length].max
+    write "== %s %s" % [message, "=" * length]
   end
 
   # Takes a message argument and outputs it as is.

@@ -2,6 +2,12 @@
 
 A toolkit for working with Custom Shopify Apps built on Rails.
 
+### Assumptions
+
+- You are using Rails 7.0 or later
+- The custom app is only installed on a single store
+- You're a Nebulab employee or a friend of Nebulab
+
 ## Features/Roadmap
 
 - [x] Shopify/Matrixify CSV tools
