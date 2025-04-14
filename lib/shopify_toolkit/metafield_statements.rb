@@ -43,7 +43,7 @@ module ShopifyToolkit::MetafieldStatements
 
     shopify_admin_client
       .query(query:, variables:)
-      .tap { handle_shopify_admin_client_errors(_1, "metafieldDefinitionCreate.userErrors") }
+      .tap { handle_shopify_admin_client_errors(_1, "data.metafieldDefinitionCreate.userErrors") }
   end
 
   def get_metafield_gid(owner_type, key, namespace: :custom)
@@ -99,7 +99,7 @@ module ShopifyToolkit::MetafieldStatements
           deleteAllAssociatedMetafields: delete_associated_metafields,
         },
       )
-      .tap { handle_shopify_admin_client_errors(_1, "metafieldDefinitionDelete.userErrors") }
+      .tap { handle_shopify_admin_client_errors(_1, "data.metafieldDefinitionDelete.userErrors") }
   end
 
   log_time \
@@ -131,7 +131,7 @@ module ShopifyToolkit::MetafieldStatements
           },
         },
       )
-      .tap { handle_shopify_admin_client_errors(_1, "metafieldDefinitionUpdate.userErrors") }
+      .tap { handle_shopify_admin_client_errors(_1, "data.metafieldDefinitionUpdate.userErrors") }
   end
 
   def self.define(&block)
