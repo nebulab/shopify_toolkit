@@ -75,7 +75,19 @@ module ShopifyToolkit::Schema
 
   def generate_schema_content
     definitions = fetch_definitions
-    content = ["ShopifyToolkit::Schema.define do"]
+
+    content = [
+      <<~RUBY
+        # This file is auto-generated from the current state of the Shopify metafields.
+        # Instead of editing this file, please use the metafields migration feature of ShopifyToolkit
+        # to incrementally modify your metafields, and then regenerate this schema definition.
+        #
+        # This file is the source used to define your metafields when running `bin/rails shopify:schema:load`.
+        #
+        # It's strongly recommended that you check this file into your version control system.
+        ShopifyToolkit::Schema.define do
+      RUBY
+    ]
 
     definitions.each do |defn|
       owner_type = defn["ownerType"].downcase.pluralize.to_sym
@@ -111,6 +123,7 @@ module ShopifyToolkit::Schema
     end
 
     content << "end"
+    content << "\n"
     content.join("\n")
   end
 end
