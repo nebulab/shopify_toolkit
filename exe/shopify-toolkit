@@ -4,6 +4,7 @@ require 'csv'
 require 'active_record'
 require 'thor'
 require 'tmpdir'
+require 'shopify_toolkit'
 
 class ShopifyToolkit::CommandLine < Thor
   RESERVED_COLUMN_NAMES = %w[select type id]
