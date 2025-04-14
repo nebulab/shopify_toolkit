@@ -2,6 +2,7 @@
 
 require "shopify_toolkit/migration/logging"
 require "shopify_toolkit/admin_client"
+require "active_support/concern"
 
 module ShopifyToolkit::MetafieldStatements
   extend ActiveSupport::Concern
