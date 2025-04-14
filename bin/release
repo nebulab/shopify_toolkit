@@ -1,0 +1,40 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "fileutils"
+# require "optparse"
+
+def abort_with_usage
+  abort "Usage: bin/release VERSION\nExample: bin/release 1.2.3"
+end
+
+# Parse version argument
+version = ARGV[0]
+abort_with_usage unless version
+abort_with_usage unless version.match?(/^\d+\.\d+\.\d+$/)
+
+# Update version.rb
+version_file = File.expand_path("../lib/shopify_toolkit/version.rb", __dir__)
+content = File.read(version_file)
+new_content = content.gsub(/VERSION\s*=\s*["'].*?["']/, %Q(VERSION = "#{version}"))
+
+if content == new_content
+  abort "Version #{version} is already set in #{version_file}"
+end
+
+puts "Updating version to #{version}"
+File.write(version_file, new_content)
+
+# Commit changes
+puts "Committing changes"
+system(%Q(git commit -am "Release v#{version}")) or abort("Failed to commit changes")
+
+# Push to main branch
+puts "Pushing to main branch"
+system("git push origin main") or abort("Failed to push to main")
+
+# Release to RubyGems
+puts "Releasing to RubyGems"
+system("rake release") or abort("Failed to release gem")
+
+puts "Successfully released v#{version}!"
