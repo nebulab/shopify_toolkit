@@ -1,3 +1,9 @@
+# frozen_string_literal: true
+
+require "stringio"
+require "shopify_api"
+require "rails"
+
 module ShopifyToolkit::Schema
   extend self
   include ShopifyToolkit::MetafieldStatements
@@ -75,9 +81,8 @@ module ShopifyToolkit::Schema
 
   def generate_schema_content
     definitions = fetch_definitions
-
-    content = [
-      <<~RUBY
+    content = StringIO.new
+    content << <<~RUBY
         # This file is auto-generated from the current state of the Shopify metafields.
         # Instead of editing this file, please use the metafields migration feature of ShopifyToolkit
         # to incrementally modify your metafields, and then regenerate this schema definition.
@@ -87,7 +92,6 @@ module ShopifyToolkit::Schema
         # It's strongly recommended that you check this file into your version control system.
         ShopifyToolkit::Schema.define do
       RUBY
-    ]
 
     definitions.each do |defn|
       owner_type = defn["ownerType"].downcase.pluralize.to_sym
@@ -119,11 +123,10 @@ module ShopifyToolkit::Schema
         kwargs[:capabilities] = capabilities if has_non_default_capabilities
       end
 
-      content << "  create_metafield #{args.map(&:inspect).join(", ")}, #{kwargs.map { |k, v| "#{k}: #{v.inspect}" }.join(", ")}"
+      content.puts "  create_metafield #{args.map(&:inspect).join(", ")}, #{kwargs.map { |k, v| "#{k}: #{v.inspect}" }.join(", ")}"
     end
 
-    content << "end"
-    content << "\n"
-    content.join("\n")
+    content.puts "end"
+    content.string
   end
 end
