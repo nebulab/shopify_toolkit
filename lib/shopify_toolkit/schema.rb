@@ -8,6 +8,9 @@ module ShopifyToolkit::Schema
   extend self
   include ShopifyToolkit::MetafieldStatements
   include ShopifyToolkit::Migration::Logging
+
+  delegate :logger, to: Rails
+
   SCHEMA_PATH = "config/shopify/schema.rb"
 
   def load!
