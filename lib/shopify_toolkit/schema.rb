@@ -8,7 +8,37 @@ module ShopifyToolkit::Schema
   extend self
   include ShopifyToolkit::MetafieldStatements
   include ShopifyToolkit::Migration::Logging
+
+  delegate :logger, to: Rails
+
   SCHEMA_PATH = "config/shopify/schema.rb"
+  # https://shopify.dev/docs/api/admin-graphql/2024-10/enums/MetafieldOwnerType
+  OWNER_TYPES = %i[
+    api_permissions
+    articles
+    blogs
+    carttransforms
+    collections
+    companies
+    company_locations
+    customers
+    delivery_customizations
+    discounts
+    draftorders
+    fulfillment_constraint_rules
+    gift_card_transactions
+    locations
+    markets
+    orders
+    order_routing_location_rules
+    pages
+    payment_customizations
+    products
+    productvariants
+    selling_plans
+    shops
+    validations
+  ].freeze
 
   def load!
     path = Rails.root.join(SCHEMA_PATH)
@@ -38,10 +68,12 @@ module ShopifyToolkit::Schema
     instance_eval(&block)
   end
 
-  def fetch_definitions
+  def fetch_definitions(owner_type:)
+    owner_type = owner_type.to_s.singularize.upcase
+
     query = <<~GRAPHQL
       query {
-        metafieldDefinitions(first: 250, ownerType: PRODUCT) {
+        metafieldDefinitions(first: 250, ownerType: #{owner_type}) {
           nodes {
             id
             name
@@ -74,57 +106,71 @@ module ShopifyToolkit::Schema
       }
     GRAPHQL
 
-    result = shopify_admin_client.query(query:).tap { handle_shopify_admin_client_errors(_1) }.body
+    result =
+      shopify_admin_client
+        .query(query:)
+        .tap { handle_shopify_admin_client_errors(_1) }
+        .body
 
     result.dig("data", "metafieldDefinitions", "nodes") || []
   end
 
   def generate_schema_content
-    definitions = fetch_definitions
+    definitions =
+      OWNER_TYPES.flat_map { |owner_type| fetch_definitions(owner_type:) }
+
     content = StringIO.new
     content << <<~RUBY
-        # This file is auto-generated from the current state of the Shopify metafields.
-        # Instead of editing this file, please use the metafields migration feature of ShopifyToolkit
-        # to incrementally modify your metafields, and then regenerate this schema definition.
-        #
-        # This file is the source used to define your metafields when running `bin/rails shopify:schema:load`.
-        #
-        # It's strongly recommended that you check this file into your version control system.
-        ShopifyToolkit::Schema.define do
-      RUBY
+      # This file is auto-generated from the current state of the Shopify metafields.
+      # Instead of editing this file, please use the metafields migration feature of ShopifyToolkit
+      # to incrementally modify your metafields, and then regenerate this schema definition.
+      #
+      # This file is the source used to define your metafields when running `bin/rails shopify:schema:load`.
+      #
+      # It's strongly recommended that you check this file into your version control system.
+      ShopifyToolkit::Schema.define do
+    RUBY
 
-    definitions.each do |defn|
-      owner_type = defn["ownerType"].downcase.pluralize.to_sym
-      key = defn["key"].to_sym
-      type = defn["type"]["name"].to_sym
-      name = defn["name"]
-      namespace = defn["namespace"]&.to_sym
-      description = defn["description"]
-      validations = defn["validations"]&.map { |v| v.transform_keys(&:to_sym) }
-      capabilities = defn["capabilities"]&.transform_keys(&:to_sym)&.transform_values { |v| v.transform_keys(&:to_sym) }
+    # Sort for consistent output
+    definitions
+      .sort_by { [_1["ownerType"], _1["namespace"], _1["key"]] }
+      .each do
+        owner_type = _1["ownerType"].downcase.pluralize.to_sym
+        key = _1["key"].to_sym
+        type = _1["type"]["name"].to_sym
+        name = _1["name"]
+        namespace = _1["namespace"]&.to_sym
+        description = _1["description"]
+        validations = _1["validations"]&.map { |v| v.transform_keys(&:to_sym) }
+        capabilities =
+          _1["capabilities"]
+            &.transform_keys(&:to_sym)
+            &.transform_values { |v| v.transform_keys(&:to_sym) }
 
-      args = [owner_type, key, type]
-      kwargs = { name: name }
-      kwargs[:namespace] = namespace if namespace && namespace != :custom
-      kwargs[:description] = description if description
-      kwargs[:validations] = validations if validations.present?
+        args = [owner_type, key, type]
+        kwargs = { name: name }
+        kwargs[:namespace] = namespace if namespace && namespace != :custom
+        kwargs[:description] = description if description
+        kwargs[:validations] = validations if validations.present?
 
-      # Only include capabilities if they have non-default values
-      if capabilities.present?
-        has_non_default_capabilities =
-          capabilities.any? do |cap, value|
-            case cap
-            when :smartCollectionCondition, :adminFilterable
-              value[:enabled] == true
-            else
-              true
+        # Only include capabilities if they have non-default values
+        if capabilities.present?
+          has_non_default_capabilities =
+            capabilities.any? do |cap, value|
+              case cap
+              when :smartCollectionCondition, :adminFilterable
+                value[:enabled] == true
+              else
+                true
+              end
             end
-          end
-        kwargs[:capabilities] = capabilities if has_non_default_capabilities
-      end
+          kwargs[:capabilities] = capabilities if has_non_default_capabilities
+        end
 
-      content.puts "  create_metafield #{args.map(&:inspect).join(", ")}, #{kwargs.map { |k, v| "#{k}: #{v.inspect}" }.join(", ")}"
-    end
+        args_string = args.map(&:inspect).join(", ")
+        kwargs_string = kwargs.map { |k, v| "#{k}: #{v.inspect}" }.join(", ")
+        content.puts "  create_metafield #{args_string}, #{kwargs_string}"
+      end
 
     content.puts "end"
     content.string
