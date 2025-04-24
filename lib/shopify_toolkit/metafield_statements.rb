@@ -22,6 +22,12 @@ module ShopifyToolkit::MetafieldStatements
   def create_metafield(owner_type, key, type, namespace: :custom, name:, **options)
     ownerType = owner_type.to_s.singularize.upcase # Eg. "PRODUCT"
 
+    # Skip creation if metafield already exists
+    if get_metafield_gid(owner_type, key, namespace: namespace)
+      say "Metafield #{namespace}:#{key} already exists for #{owner_type}, skipping creation"
+      return
+    end
+
     # https://shopify.dev/docs/api/admin-graphql/2024-10/mutations/metafieldDefinitionCreate
     query =
       "# GraphQL
@@ -68,8 +74,7 @@ module ShopifyToolkit::MetafieldStatements
         .tap { handle_shopify_admin_client_errors(_1) }
         .body
 
-    result.dig("data", "metafieldDefinitions", "nodes", 0, "id") or
-      raise "Metafield not found for #{owner_type}##{namespace}:#{key}"
+    result.dig("data", "metafieldDefinitions", "nodes", 0, "id")
   end
 
   log_time \
@@ -77,6 +82,11 @@ module ShopifyToolkit::MetafieldStatements
     if namespace == nil && delete_associated_metafields == false
       raise ArgumentError,
             "For reserved namespaces, you must delete all associated metafields (delete_associated_metafields: true)"
+    end
+
+    unless get_metafield_gid(owner_type, key, namespace: namespace)
+      say "Metafield #{namespace}:#{key} not found for #{owner_type}, skipping deletion"
+      return
     end
 
     shopify_admin_client
@@ -104,6 +114,11 @@ module ShopifyToolkit::MetafieldStatements
 
   log_time \
   def update_metafield(owner_type, key, namespace: :custom, **options)
+    unless get_metafield_gid(owner_type, key, namespace: namespace)
+      say "Metafield #{namespace}:#{key} not found for #{owner_type}, skipping update"
+      return
+    end
+
     shopify_admin_client
       .query(
         # Documentation: https://shopify.dev/docs/api/admin-graphql/2024-10/mutations/metafieldDefinitionUpdate
