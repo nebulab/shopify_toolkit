@@ -30,38 +30,51 @@ bundle add shopify_toolkit
 
 ## Usage
 
-### Migrating Metafields definitions using ActiveRecord Migrations
+### Migrating Metafields and Metaobjects
 
 Within a Rails application created with ShopifyApp, generate a new migration file:
 
 ```bash
-rails generate migration AddMetafieldDefinitions
+touch config/shopify/migrate/20250528130134_add_product_press_releases.rb
 ```
 
-Include the `ShopifyToolkit::MetafieldStatements` module in your migration file
-in order to use the metafield statements:
-
+Then, add the following code to the migration file:
 ```ruby
-class AddMetafieldDefinitions < ActiveRecord::Migration[7.0]
-  include ShopifyToolkit::MetafieldStatements
-
+# config/shopify/migrate/20250528130134_add_product_press_releases.rb
+class AddProductPressReleases < ShopifyToolkit::Migration
   def up
-    Shop.first!.with_shopify_session do
-      create_metafield :products, :my_metafield, :single_line_text_field, name: "My Metafield"
-    end
+    create_metaobject_definition :press_release,
+      name: "Press Release",
+      displayNameKey: "name",
+      access: { storefront: "PUBLIC_READ" },
+      capabilities: {
+        onlineStore: { enabled: false },
+        publishable: { enabled: true },
+        translatable: { enabled: true },
+        renderable: { enabled: false },
+      },
+      fieldDefinitions: [
+        { key: "name", name: "Title", required: true, type: "single_line_text_field" },
+        { key: "body", name: "Body", required: true, type: "multi_line_text_field" },
+      ]
+
+    metaobject_definition_id = get_metaobject_definition_gid :press_release
+
+    create_metafield :products, :press_release, :metaobject_reference, name: "Press Release", validations: [
+      { name: "metaobject_definition_id", value: metaobject_definition_id }
+    ]
   end
 
   def down
-    Shop.first!.with_shopify_session do
-      remove_metafield :products, :my_metafield
-    end
+    # Noop. We don't want to remove the metaobject definition, since it might be populated with data.
   end
 end
 ```
-Then run the migration:
+
+Then run the migrations:
 
 ```bash
-rails db:migrate
+bundle exec shopify-toolkit migrate
 ```
 
 ### Creating a Metafield Schema Definition
