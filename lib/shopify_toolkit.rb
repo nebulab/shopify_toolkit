@@ -4,7 +4,6 @@ require_relative "shopify_toolkit/version"
 require "zeitwerk"
 
 module ShopifyToolkit
-
   def self.loader
     @loader ||= Zeitwerk::Loader.for_gem
   end

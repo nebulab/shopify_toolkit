@@ -1,3 +1,5 @@
+require "shopify_api"
+
 module ShopifyToolkit::AdminClient
   API_VERSION = "2024-10"
 
