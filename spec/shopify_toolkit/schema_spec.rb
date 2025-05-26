@@ -80,22 +80,39 @@ RSpec.describe ShopifyToolkit::Schema do
       }
     end
 
+    SCHEMA_FIXTURE_BEFORE_RUBY_3_4 = <<~RUBY.freeze
+      # This file is auto-generated from the current state of the Shopify metafields.
+      # Instead of editing this file, please use the metafields migration feature of ShopifyToolkit
+      # to incrementally modify your metafields, and then regenerate this schema definition.
+      #
+      # This file is the source used to define your metafields when running `bin/rails shopify:schema:load`.
+      #
+      # It's strongly recommended that you check this file into your version control system.
+      ShopifyToolkit::Schema.define do
+        create_metafield :articles, :my_metafield_2, :integer, name: "My Metafield 2", namespace: :my_namespace, capabilities: {:smartCollectionCondition=>{:enabled=>false}, :adminFilterable=>{:enabled=>true}}
+        create_metafield :products, :my_metafield, :single_line_text_field, name: "My Metafield", description: "My description", validations: [{:name=>"min_length", :value=>"1"}, {:name=>"max_length", :value=>"10"}], capabilities: {:smartCollectionCondition=>{:enabled=>true}, :adminFilterable=>{:enabled=>false}}
+      end
+    RUBY
+
+    SCHEMA_FIXTURE = <<~RUBY.freeze
+      # This file is auto-generated from the current state of the Shopify metafields.
+      # Instead of editing this file, please use the metafields migration feature of ShopifyToolkit
+      # to incrementally modify your metafields, and then regenerate this schema definition.
+      #
+      # This file is the source used to define your metafields when running `bin/rails shopify:schema:load`.
+      #
+      # It's strongly recommended that you check this file into your version control system.
+      ShopifyToolkit::Schema.define do
+        create_metafield :articles, :my_metafield_2, :integer, name: "My Metafield 2", namespace: :my_namespace, capabilities: {smartCollectionCondition: {enabled: false}, adminFilterable: {enabled: true}}
+        create_metafield :products, :my_metafield, :single_line_text_field, name: "My Metafield", description: "My description", validations: [{name: "min_length", value: "1"}, {name: "max_length", value: "10"}], capabilities: {smartCollectionCondition: {enabled: true}, adminFilterable: {enabled: false}}
+      end
+    RUBY
+
     it "dumps the schema to a file" do
       expect { schema.dump! }.to output(/Generating schema/).to_stdout
 
-      expect(root.join("config/shopify/schema.rb").read).to eq(<<~RUBY)
-        # This file is auto-generated from the current state of the Shopify metafields.
-        # Instead of editing this file, please use the metafields migration feature of ShopifyToolkit
-        # to incrementally modify your metafields, and then regenerate this schema definition.
-        #
-        # This file is the source used to define your metafields when running `bin/rails shopify:schema:load`.
-        #
-        # It's strongly recommended that you check this file into your version control system.
-        ShopifyToolkit::Schema.define do
-          create_metafield :articles, :my_metafield_2, :integer, name: "My Metafield 2", namespace: :my_namespace, capabilities: {:smartCollectionCondition=>{:enabled=>false}, :adminFilterable=>{:enabled=>true}}
-          create_metafield :products, :my_metafield, :single_line_text_field, name: "My Metafield", description: "My description", validations: [{:name=>"min_length", :value=>"1"}, {:name=>"max_length", :value=>"10"}], capabilities: {:smartCollectionCondition=>{:enabled=>true}, :adminFilterable=>{:enabled=>false}}
-        end
-      RUBY
+      expected_schema = RUBY_VERSION.to_f < 3.4 ? SCHEMA_FIXTURE_BEFORE_RUBY_3_4 : SCHEMA_FIXTURE
+      expect(root.join("config/shopify/schema.rb").read).to eq(expected_schema)
     end
   end
 end
