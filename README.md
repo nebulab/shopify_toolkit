@@ -12,8 +12,13 @@ A toolkit for working with Custom Shopify Apps built on Rails.
 
 - [x] Shopify/Matrixify CSV tools
 - [x] Metafield/Metaobject migrations (just like ActiveRecord migrations, but for Shopify!)
-  - [x] Metafield Definitions management API
-  - [x] Metaobject Definitions management API
+- [x] Metafield Definitions management API
+- [-] Metaobject Definitions management API
+  - [x] Create
+  - [x] Update
+  - [x] Find
+  - [ ] Delete
+- [ ] Metaobject Instances management API
 - [ ] GraphQL Admin API code generation (syntax checking, etc)
 - [ ] GraphQL Admin API client with built-in rate limiting
 - [ ] GraphQL Admin API client with built-in caching
