@@ -53,6 +53,24 @@ class ShopifyToolkit::CommandLine < Thor
     Result.class_eval { binding.irb(show_code: false) }
   end
 
+  desc "migrate", "Run migrations"
+  def migrate
+    require "./config/environment"
+    ::Shop.sole.with_shopify_session { ShopifyToolkit::Migrator.new.up }
+  end
+
+  desc "down", "Run migrations down"
+  def down
+    require "./config/environment"
+    ::Shop.sole.with_shopify_session { ShopifyToolkit::Migrator.new.down }
+  end
+
+  desc "redo", "Run migrations down and up again"
+  def redo
+    require "./config/environment"
+    ::Shop.sole.with_shopify_session { ShopifyToolkit::Migrator.new.redo }
+  end
+
   desc "schema_load", 'Load schema from "config/shopify/schema.rb"'
   def schema_load
     require "./config/environment"
