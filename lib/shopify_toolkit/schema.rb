@@ -3,6 +3,7 @@
 require "stringio"
 require "shopify_api"
 require "rails"
+require "active_support/core_ext/module/delegation"
 
 module ShopifyToolkit::Schema
   extend self
