@@ -67,6 +67,10 @@ class ShopifyToolkit::CommandLine < Thor
     require "./config/environment"
     ::Shop.sole.with_shopify_session { ShopifyToolkit::Schema.dump! }
   end
+
+  def self.exit_on_failure?
+    true
+  end
 end
 
 ShopifyToolkit::CommandLine.start(ARGV)
