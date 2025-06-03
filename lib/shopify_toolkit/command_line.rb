@@ -59,8 +59,8 @@ class ShopifyToolkit::CommandLine < Thor
     ::Shop.sole.with_shopify_session { ShopifyToolkit::Migrator.new.up }
   end
 
-  desc "down", "Run migrations down"
-  def down
+  desc "rollback", "Rollback last migration"
+  def rollback
     require "./config/environment"
     ::Shop.sole.with_shopify_session { ShopifyToolkit::Migrator.new.down }
   end
