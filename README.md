@@ -40,7 +40,7 @@ bundle add shopify_toolkit
 Within a Rails application created with ShopifyApp, generate a new migration file:
 
 ```bash
-touch config/shopify/migrate/$(date +%Y%m%d%H%M%S)_add_product_press_releases.rb
+bundle exec shopify-toolkit generate migration AddProductPressReleases
 ```
 
 Then, add the following code to the migration file:
