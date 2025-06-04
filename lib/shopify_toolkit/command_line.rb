@@ -1,9 +1,12 @@
 require 'csv'
 require 'active_record'
 require 'thor'
+require 'thor/actions'
 require 'tmpdir'
 
 class ShopifyToolkit::CommandLine < Thor
+  include Thor::Actions
+
   RESERVED_COLUMN_NAMES = %w[select type id]
 
   class Result < ActiveRecord::Base
@@ -81,6 +84,31 @@ class ShopifyToolkit::CommandLine < Thor
   def schema_dump
     require "./config/environment"
     ::Shop.sole.with_shopify_session { ShopifyToolkit::Schema.dump! }
+  end
+
+  desc "generate_migration NAME", "Generate a migration with the given NAME"
+  def generate_migration(name)
+    require "./config/environment"
+    migrations_dir = Rails.root.join("config/shopify/migrate")
+    file_name = "#{Time.now.utc.strftime('%Y%m%d%H%M%S')}_#{name.underscore}.rb"
+
+    if migrations_dir.entries.map(&:to_s).grep(/\A\d+_#{Regexp.escape name.underscore}\.rb\z/).any?
+      raise Thor::Error, "Migration class already exists: #{file_name}"
+    end
+
+    create_file migrations_dir.join(file_name) do
+      <<~RUBY
+        class #{name.camelize} < ShopifyToolkit::Migration
+          def up
+            # Add your migration code here
+          end
+
+          def down
+            # Add your rollback code here
+          end
+        end
+      RUBY
+    end
   end
 
   def self.exit_on_failure?
