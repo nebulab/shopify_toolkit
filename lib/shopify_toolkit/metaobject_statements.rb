@@ -137,6 +137,209 @@ module ShopifyToolkit::MetaobjectStatements
       .tap { handle_shopify_admin_client_errors(_1, "data.metaobjectDefinitionDelete.userErrors") }
   end
 
+  log_time \
+  def create_metaobject(type, handle: nil, fields: [], **options)
+    # Check if metaobject definition exists
+    unless get_metaobject_definition_gid(type)
+      raise "Metaobject definition #{type} does not exist. Create it first."
+    end
+
+    # Skip creation if metaobject with handle already exists
+    if handle && find_metaobject(type, handle)
+      say "Metaobject #{type} with handle '#{handle}' already exists, skipping creation"
+      return find_metaobject(type, handle)
+    end
+
+    # https://shopify.dev/docs/api/admin-graphql/latest/mutations/metaobjectCreate
+    query =
+      "# GraphQL
+      mutation CreateMetaobject($metaobject: MetaobjectCreateInput!) {
+        metaobjectCreate(metaobject: $metaobject) {
+          metaobject {
+            id
+            handle
+            type
+            displayName
+            fields {
+              key
+              value
+            }
+          }
+          userErrors {
+            field
+            message
+            code
+          }
+        }
+      }
+      "
+    
+    metaobject_input = { type: type.to_s, **options }
+    metaobject_input[:handle] = handle if handle
+    metaobject_input[:fields] = fields.map { |field| { key: field[:key].to_s, value: field[:value].to_s } } if fields.any?
+    
+    variables = { metaobject: metaobject_input }
+
+    shopify_admin_client
+      .query(query:, variables:)
+      .tap { handle_shopify_admin_client_errors(_1, "data.metaobjectCreate.userErrors") }
+  end
+
+  def find_metaobject(type, handle)
+    # https://shopify.dev/docs/api/admin-graphql/latest/queries/metaobject
+    query =
+      "# GraphQL
+      query FindMetaobject($type: String!, $handle: String!) {
+        metaobject(type: $type, handle: $handle) {
+          id
+          handle
+          type
+          displayName
+          fields {
+            key
+            value
+          }
+        }
+      }
+      "
+    variables = { type: type.to_s, handle: handle.to_s }
+
+    result = shopify_admin_client
+      .query(query:, variables:)
+      .tap { handle_shopify_admin_client_errors(_1) }
+      .body
+
+    result.dig("data", "metaobject")
+  end
+
+  def find_metaobjects(type, first: 50, query: nil, sort_key: "id", reverse: false)
+    # https://shopify.dev/docs/api/admin-graphql/latest/queries/metaobjects
+    graphql_query =
+      "# GraphQL
+      query FindMetaobjects($type: String!, $first: Int, $query: String, $sortKey: String, $reverse: Boolean) {
+        metaobjects(type: $type, first: $first, query: $query, sortKey: $sortKey, reverse: $reverse) {
+          nodes {
+            id
+            handle
+            type
+            displayName
+            fields {
+              key
+              value
+            }
+          }
+          pageInfo {
+            hasNextPage
+            hasPreviousPage
+            startCursor
+            endCursor
+          }
+        }
+      }
+      "
+    variables = { 
+      type: type.to_s, 
+      first: first, 
+      sortKey: sort_key, 
+      reverse: reverse 
+    }
+    variables[:query] = query if query
+
+    result = shopify_admin_client
+      .query(query: graphql_query, variables:)
+      .tap { handle_shopify_admin_client_errors(_1) }
+      .body
+
+    result.dig("data", "metaobjects")
+  end
+
+  log_time \
+  def update_metaobject(type, handle_or_id, fields: [], **options)
+    # Find the metaobject to get its ID
+    metaobject = if handle_or_id.start_with?("gid://")
+      # Already a GID
+      { "id" => handle_or_id }
+    else
+      # It's a handle, find by handle
+      find_metaobject(type, handle_or_id)
+    end
+
+    unless metaobject
+      say "Metaobject #{type} with identifier '#{handle_or_id}' not found, skipping update"
+      return
+    end
+
+    # https://shopify.dev/docs/api/admin-graphql/latest/mutations/metaobjectUpdate
+    query =
+      "# GraphQL
+      mutation UpdateMetaobject($id: ID!, $metaobject: MetaobjectUpdateInput!) {
+        metaobjectUpdate(id: $id, metaobject: $metaobject) {
+          metaobject {
+            id
+            handle
+            type
+            displayName
+            fields {
+              key
+              value
+            }
+          }
+          userErrors {
+            field
+            message
+            code
+          }
+        }
+      }
+      "
+    
+    metaobject_input = options.dup
+    metaobject_input[:fields] = fields.map { |field| { key: field[:key].to_s, value: field[:value].to_s } } if fields.any?
+    
+    variables = { id: metaobject["id"], metaobject: metaobject_input }
+
+    shopify_admin_client
+      .query(query:, variables:)
+      .tap { handle_shopify_admin_client_errors(_1, "data.metaobjectUpdate.userErrors") }
+  end
+
+  log_time \
+  def delete_metaobject(type, handle_or_id)
+    # Find the metaobject to get its ID
+    metaobject = if handle_or_id.start_with?("gid://")
+      # Already a GID
+      { "id" => handle_or_id }
+    else
+      # It's a handle, find by handle
+      find_metaobject(type, handle_or_id)
+    end
+
+    unless metaobject
+      say "Metaobject #{type} with identifier '#{handle_or_id}' not found, skipping deletion"
+      return
+    end
+
+    # https://shopify.dev/docs/api/admin-graphql/latest/mutations/metaobjectDelete
+    query =
+      "# GraphQL
+      mutation DeleteMetaobject($id: ID!) {
+        metaobjectDelete(id: $id) {
+          deletedId
+          userErrors {
+            field
+            message
+            code
+          }
+        }
+      }
+      "
+    variables = { id: metaobject["id"] }
+
+    shopify_admin_client
+      .query(query:, variables:)
+      .tap { handle_shopify_admin_client_errors(_1, "data.metaobjectDelete.userErrors") }
+  end
+
   def self.define(&block)
     context = Object.new
     context.extend(self)
