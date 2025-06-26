@@ -40,7 +40,7 @@ bundle add shopify_toolkit
 Within a Rails application created with ShopifyApp, generate a new migration file:
 
 ```bash
-bundle exec shopify-toolkit generate migration AddProductPressReleases
+bundle exec shopify-toolkit generate_migration AddProductPressReleases
 ```
 
 Then, add the following code to the migration file:
