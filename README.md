@@ -44,6 +44,7 @@ bundle exec shopify-toolkit generate_migration AddProductPressReleases
 ```
 
 Then, add the following code to the migration file:
+
 ```ruby
 # config/shopify/migrate/20250528130134_add_product_press_releases.rb
 class AddProductPressReleases < ShopifyToolkit::Migration
@@ -104,8 +105,10 @@ The tool will import the file into a local SQLite database
 and open a console for you to run queries against the data
 using ActiveRecord.
 
+> Note: To use it with `bundle exec`, sqlite3 must be included in the project’s bundle
+
 ```shell
-shopify-csv analyze products-result.csv --force-import
+shopify-toolkit analyze products-result.csv --force-import
 ==> Importing products-result.csv into /var/folders/hn/z7b7s1kj3js4k7_qk3lj27kr0000gn/T/shopify-toolkit-analyze-products_result_csv.sqlite3
 -- create_table(:results, {:force=>true})
    -> 0.0181s
@@ -119,7 +122,7 @@ shopify-csv analyze products-result.csv --force-import
  "UPDATE: Found by Handle | Assuming MERGE for Variant Command | Assuming MERGE for Tags Command | Variants updated by SKU: 1 | Warning: The following media were not uploaded to Shopify: [https://mymedia.com/image.jpg: Error downloading from Web: 302 Moved Temporarily]",
  ...]
 >> first
-#<ShopifyCSV::Result:0x0000000300bf1668
+#<ShopifyToolkit::Result:0x0000000300bf1668
  id: 1,
  data: nil,
  handle: "my-product",
