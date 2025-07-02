@@ -24,6 +24,10 @@ A toolkit for working with Custom Shopify Apps built on Rails.
 - [ ] GraphQL Admin API client with built-in caching
 - [ ] GraphQL Admin API client with built-in error handling
 - [ ] GraphQL Admin API client with built-in logging
+- [ ] Bulk Operations
+  - [ ] Interface for uploading and getting results for query / mutation
+  - [ ] Error handling and Logging
+  - [ ] Callbacks
 
 ## Installation
 
