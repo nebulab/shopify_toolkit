@@ -2,6 +2,8 @@
 
 A toolkit for working with Custom Shopify Apps built on Rails.
 
+*Developed and maintained by [Nebulab](https://nebulab.com/).*
+
 ### Assumptions
 
 - You are using Rails 7.0 or later
