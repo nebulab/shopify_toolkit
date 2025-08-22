@@ -24,10 +24,11 @@ A toolkit for working with Custom Shopify Apps built on Rails.
 - [ ] GraphQL Admin API client with built-in caching
 - [ ] GraphQL Admin API client with built-in error handling
 - [ ] GraphQL Admin API client with built-in logging
-- [ ] Bulk Operations
-  - [ ] Interface for uploading and getting results for query / mutation
-  - [ ] Error handling and Logging
-  - [ ] Callbacks
+- [x] Bulk Operations
+  - [x] Interface for uploading and getting results for query / mutation
+  - [x] Error handling and Logging
+  - [x] Callbacks
+  - [x] CLI commands
 
 ## Installation
 
@@ -136,6 +137,210 @@ shopify-toolkit analyze products-result.csv --force-import
 >> count
 => 116103
 ```
+
+### Working with Bulk Operations
+
+Bulk Operations allow you to asynchronously run large GraphQL queries and mutations against the Shopify Admin API without worrying about rate limits or managing pagination manually.
+
+#### Ruby API
+
+Include the `ShopifyToolkit::BulkOperations` module in your class to access bulk operations functionality:
+
+```ruby
+class MyService
+  include ShopifyToolkit::BulkOperations
+  
+  def export_all_products
+    query = <<~GRAPHQL
+      {
+        products {
+          edges {
+            node {
+              id
+              title
+              handle
+              productType
+              vendor
+              createdAt
+              variants {
+                edges {
+                  node {
+                    id
+                    title
+                    price
+                    inventoryQuantity
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    GRAPHQL
+    
+    # Submit the bulk query
+    operation = run_bulk_query(query)
+    operation_id = operation.dig("bulkOperation", "id")
+    
+    # Poll until completion
+    completed = poll_until_complete(operation_id) do |status|
+      puts "Status: #{status["status"]}, Objects: #{status["objectCount"]}"
+    end
+    
+    # Download and parse results
+    if completed["status"] == "COMPLETED"
+      results = download_results(completed)
+      puts "Downloaded #{results.size} products"
+      return results
+    end
+  end
+  
+  def bulk_create_products(products_data)
+    mutation = <<~GRAPHQL
+      mutation createProduct($input: ProductInput!) {
+        productCreate(input: $input) {
+          product {
+            id
+            title
+            handle
+          }
+          userErrors {
+            field
+            message
+          }
+        }
+      }
+    GRAPHQL
+    
+    # Prepare variables for each product
+    variables = products_data.map { |product| { input: product } }
+    
+    # Submit bulk mutation
+    operation = run_bulk_mutation(mutation, variables)
+    operation_id = operation.dig("bulkOperation", "id")
+    
+    # Wait for completion
+    completed = poll_until_complete(operation_id)
+    
+    if completed["status"] == "COMPLETED"
+      results = download_results(completed)
+      puts "Created #{results.size} products"
+      return results
+    end
+  end
+end
+```
+
+#### CLI Commands
+
+The gem provides several CLI commands for working with bulk operations:
+
+##### Bulk Query
+
+Submit a bulk GraphQL query:
+
+```bash
+# Submit a query and get the operation ID
+shopify-toolkit bulk_query examples/bulk_query_products.graphql
+
+# Submit and poll until completion, then download results
+shopify-toolkit bulk_query examples/bulk_query_products.graphql --poll --output results.json
+
+# Submit with object grouping enabled
+shopify-toolkit bulk_query examples/bulk_query_products.graphql --group-objects
+```
+
+##### Bulk Mutation
+
+Submit a bulk GraphQL mutation with variables:
+
+```bash
+# Submit a mutation with JSON variables file
+shopify-toolkit bulk_mutation examples/bulk_mutation_products.graphql examples/bulk_mutation_variables.json
+
+# Submit with JSONL variables file and poll for completion
+shopify-toolkit bulk_mutation examples/bulk_mutation_products.graphql examples/bulk_mutation_variables.jsonl --poll
+
+# Submit with a client identifier for tracking
+shopify-toolkit bulk_mutation examples/bulk_mutation_products.graphql examples/bulk_mutation_variables.json --client-identifier "my-import-job"
+```
+
+##### Check Status
+
+Check the status of a bulk operation:
+
+```bash
+# Check current bulk operation status
+shopify-toolkit bulk_status
+
+# Check status of specific operation
+shopify-toolkit bulk_status gid://shopify/BulkOperation/123456
+
+# Filter by operation type
+shopify-toolkit bulk_status --type QUERY
+```
+
+##### Cancel Operation
+
+Cancel a running bulk operation:
+
+```bash
+shopify-toolkit bulk_cancel gid://shopify/BulkOperation/123456
+```
+
+##### Download Results
+
+Download and display results from a completed operation:
+
+```bash
+# Download results by operation ID
+shopify-toolkit bulk_results gid://shopify/BulkOperation/123456 --output results.json
+
+# Download results by direct URL
+shopify-toolkit bulk_results "https://storage.googleapis.com/shopify/results.jsonl"
+
+# Download raw JSONL without parsing
+shopify-toolkit bulk_results gid://shopify/BulkOperation/123456 --raw --output results.jsonl
+```
+
+#### Example Files
+
+The gem includes example files in the `examples/` directory:
+
+- `bulk_query_products.graphql` - Query to fetch all products with variants
+- `bulk_mutation_products.graphql` - Mutation to create products  
+- `bulk_mutation_variables.json` - JSON format variables for mutations
+- `bulk_mutation_variables.jsonl` - JSONL format variables for mutations
+
+#### Error Handling
+
+The module provides specific error classes:
+
+- `ShopifyToolkit::BulkOperations::BulkOperationError` - General bulk operation errors
+- `ShopifyToolkit::BulkOperations::OperationInProgressError` - Thrown when trying to start an operation while another is running
+
+```ruby
+begin
+  operation = run_bulk_query(query)
+rescue ShopifyToolkit::BulkOperations::OperationInProgressError
+  puts "Another bulk operation is already running"
+rescue ShopifyToolkit::BulkOperations::BulkOperationError => e
+  puts "Bulk operation failed: #{e.message}"
+  puts "Error code: #{e.error_code}" if e.error_code
+  puts "User errors: #{e.user_errors}" if e.user_errors.any?
+end
+```
+
+#### Features
+
+- **Automatic staged file uploads** for bulk mutations
+- **JSONL parsing and streaming** to handle large result files efficiently  
+- **Comprehensive error handling** with specific error types
+- **Progress polling** with customizable intervals and timeouts
+- **Result downloading** with parsing options
+- **Operation cancellation** support
+- **CLI integration** for all bulk operations
+- **Logging** for debugging and monitoring
 
 ## Development
 

@@ -1,0 +1,26 @@
+[
+  {
+    "input": {
+      "title": "Awesome T-Shirt",
+      "productType": "Apparel",
+      "vendor": "Acme Corp",
+      "tags": ["clothing", "casual"]
+    }
+  },
+  {
+    "input": {
+      "title": "Cool Sneakers",
+      "productType": "Footwear", 
+      "vendor": "Shoe Co",
+      "tags": ["shoes", "athletic"]
+    }
+  },
+  {
+    "input": {
+      "title": "Stylish Hat",
+      "productType": "Accessories",
+      "vendor": "Fashion Inc",
+      "tags": ["accessories", "fashion"]
+    }
+  }
+]
