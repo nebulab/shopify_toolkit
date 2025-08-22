@@ -1,4 +1,0 @@
----
-gem:
-  typed_overrides:
-    "openssl": "false"
