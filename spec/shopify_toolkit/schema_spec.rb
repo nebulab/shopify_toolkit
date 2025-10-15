@@ -17,6 +17,47 @@ RSpec.describe ShopifyToolkit::Schema do
     }
   end
 
+  let(:metaobject_definitions) do
+    [
+      {
+        "id" => "gid://shopify/MetaobjectDefinition/123",
+        "type" => "color_pattern",
+        "name" => "Color Pattern",
+        "description" => "Product color patterns",
+        "fieldDefinitions" => [
+          {
+            "key" => "name",
+            "name" => "Pattern Name",
+            "description" => "The name of the pattern",
+            "type" => { "name" => "single_line_text_field" },
+            "required" => true,
+            "validations" => [
+              { "name" => "min_length", "value" => "1" }
+            ]
+          },
+          {
+            "key" => "related_pattern",
+            "name" => "Related Pattern",
+            "description" => nil,
+            "type" => { "name" => "metaobject_reference" },
+            "required" => false,
+            "validations" => [
+              { "name" => "metaobject_definition_id", "value" => "gid://shopify/MetaobjectDefinition/456" }
+            ]
+          }
+        ],
+        "access" => {
+          "admin" => true,
+          "storefront" => false
+        },
+        "capabilities" => {
+          "publishable" => { "enabled" => true },
+          "translatable" => { "enabled" => false }
+        }
+      }
+    ]
+  end
+
   before do
     allow(Rails).to receive(:root).and_return(root)
     root.join("config/shopify").mkpath
@@ -28,6 +69,9 @@ RSpec.describe ShopifyToolkit::Schema do
     allow(schema).to receive(:get_metaobject_definition_type_by_gid).with(
       "gid://shopify/MetaobjectDefinition/456"
     ).and_return("size_chart")
+
+    # Mock metaobject definitions fetch
+    allow(schema).to receive(:fetch_metaobject_definitions).and_return(metaobject_definitions)
   end
 
   describe "#dump!" do
@@ -166,14 +210,16 @@ RSpec.describe ShopifyToolkit::Schema do
     end
 
     SCHEMA_FIXTURE_BEFORE_RUBY_3_4 = <<~RUBY.freeze
-      # This file is auto-generated from the current state of the Shopify metafields.
-      # Instead of editing this file, please use the metafields migration feature of ShopifyToolkit
-      # to incrementally modify your metafields, and then regenerate this schema definition.
+      # This file is auto-generated from the current state of the Shopify metafields and metaobjects.
+      # Instead of editing this file, please use the migration features of ShopifyToolkit
+      # to incrementally modify your metafields and metaobjects, and then regenerate this schema definition.
       #
       # This file is the source used to define your metafields when running `bin/rails shopify:schema:load`.
       #
       # It's strongly recommended that you check this file into your version control system.
       ShopifyToolkit::Schema.define do
+        create_metaobject_definition :color_pattern, name: "Color Pattern", description: "Product color patterns", field_definitions: [{:key=>:name, :type=>:single_line_text_field, :name=>"Pattern Name", :description=>"The name of the pattern", :required=>true, :validations=>[{:name=>"min_length", :value=>"1"}]}, {:key=>:related_pattern, :type=>:metaobject_reference, :name=>"Related Pattern", :validations=>[{:name=>"metaobject_definition_type", :value=>"size_chart"}]}], access: {:admin=>true, :storefront=>false}, capabilities: {:publishable=>{:enabled=>true}, :translatable=>{:enabled=>false}}
+
         create_metafield :articles, :my_metafield_2, :integer, name: "My Metafield 2", namespace: :my_namespace, capabilities: {:smartCollectionCondition=>{:enabled=>false}, :adminFilterable=>{:enabled=>true}}
         create_metafield :products, :allowed_patterns, :"list.metaobject_reference", name: "Allowed Patterns", description: "List of allowed patterns", validations: [{:name=>"metaobject_definition_type", :value=>["color_pattern", "size_chart"]}]
         create_metafield :products, :color_pattern, :metaobject_reference, name: "Color Pattern", description: "Product color pattern", validations: [{:name=>"metaobject_definition_type", :value=>"color_pattern"}]
@@ -182,14 +228,16 @@ RSpec.describe ShopifyToolkit::Schema do
     RUBY
 
     SCHEMA_FIXTURE = <<~RUBY.freeze
-      # This file is auto-generated from the current state of the Shopify metafields.
-      # Instead of editing this file, please use the metafields migration feature of ShopifyToolkit
-      # to incrementally modify your metafields, and then regenerate this schema definition.
+      # This file is auto-generated from the current state of the Shopify metafields and metaobjects.
+      # Instead of editing this file, please use the migration features of ShopifyToolkit
+      # to incrementally modify your metafields and metaobjects, and then regenerate this schema definition.
       #
       # This file is the source used to define your metafields when running `bin/rails shopify:schema:load`.
       #
       # It's strongly recommended that you check this file into your version control system.
       ShopifyToolkit::Schema.define do
+        create_metaobject_definition :color_pattern, name: "Color Pattern", description: "Product color patterns", field_definitions: [{key: :name, type: :single_line_text_field, name: "Pattern Name", description: "The name of the pattern", required: true, validations: [{name: "min_length", value: "1"}]}, {key: :related_pattern, type: :metaobject_reference, name: "Related Pattern", validations: [{name: "metaobject_definition_type", value: "size_chart"}]}], access: {admin: true, storefront: false}, capabilities: {publishable: {enabled: true}, translatable: {enabled: false}}
+
         create_metafield :articles, :my_metafield_2, :integer, name: "My Metafield 2", namespace: :my_namespace, capabilities: {smartCollectionCondition: {enabled: false}, adminFilterable: {enabled: true}}
         create_metafield :products, :allowed_patterns, :"list.metaobject_reference", name: "Allowed Patterns", description: "List of allowed patterns", validations: [{name: "metaobject_definition_type", value: ["color_pattern", "size_chart"]}]
         create_metafield :products, :color_pattern, :metaobject_reference, name: "Color Pattern", description: "Product color pattern", validations: [{name: "metaobject_definition_type", value: "color_pattern"}]

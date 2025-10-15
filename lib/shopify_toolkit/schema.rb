@@ -154,15 +154,64 @@ module ShopifyToolkit::Schema
     result.dig("data", "metafieldDefinitions", "nodes") || []
   end
 
+  def fetch_metaobject_definitions
+    query = <<~GRAPHQL
+      query {
+        metaobjectDefinitions(first: 250) {
+          nodes {
+            id
+            type
+            name
+            description
+            fieldDefinitions {
+              key
+              name
+              description
+              type {
+                name
+              }
+              required
+              validations {
+                name
+                value
+              }
+            }
+            access {
+              admin
+              storefront
+            }
+            capabilities {
+              publishable {
+                enabled
+              }
+              translatable {
+                enabled
+              }
+            }
+          }
+        }
+      }
+    GRAPHQL
+
+    result =
+      shopify_admin_client
+        .query(query:)
+        .tap { handle_shopify_admin_client_errors(_1) }
+        .body
+
+    result.dig("data", "metaobjectDefinitions", "nodes") || []
+  end
+
   def generate_schema_content
-    definitions =
+    metaobject_definitions = fetch_metaobject_definitions
+    metafield_definitions =
       OWNER_TYPES.flat_map { |owner_type| fetch_definitions(owner_type:) }
 
     content = StringIO.new
     content << <<~RUBY
-      # This file is auto-generated from the current state of the Shopify metafields.
-      # Instead of editing this file, please use the metafields migration feature of ShopifyToolkit
-      # to incrementally modify your metafields, and then regenerate this schema definition.
+      # This file is auto-generated from the current state of the Shopify metafields and metaobjects.
+      # Instead of editing this file, please use the migration features of ShopifyToolkit
+      # to incrementally modify your metafields and metaobjects, and then regenerate this schema definition.
       #
       # This file is the source used to define your metafields when running `bin/rails shopify:schema:load`.
       #
@@ -170,8 +219,63 @@ module ShopifyToolkit::Schema
       ShopifyToolkit::Schema.define do
     RUBY
 
-    # Sort for consistent output
-    definitions
+    # Add metaobject definitions first
+    metaobject_definitions
+      .sort_by { _1["type"] }
+      .each do |definition|
+        type = definition["type"]
+        name = definition["name"]
+        description = definition["description"]
+
+        field_definitions = definition["fieldDefinitions"]&.map do |field|
+          field_hash = {
+            key: field["key"].to_sym,
+            type: field["type"]["name"].to_sym,
+            name: field["name"]
+          }
+          field_hash[:description] = field["description"] if field["description"] && !field["description"].empty?
+          field_hash[:required] = field["required"] if field["required"] == true
+
+          # Convert validations for metaobject reference fields within metaobjects
+          if field["validations"]&.any? && is_metaobject_reference_type?(field["type"]["name"])
+            field_hash[:validations] = convert_validations_gids_to_types(field["validations"], field["type"]["name"])&.map { |v| v.transform_keys(&:to_sym) }
+          elsif field["validations"]&.any?
+            field_hash[:validations] = field["validations"]&.map { |v| v.transform_keys(&:to_sym) }
+          end
+          
+          field_hash
+        end
+
+        access = definition["access"]
+        capabilities = definition["capabilities"]
+
+        args = [type.to_sym]
+        kwargs = { name: name }
+        kwargs[:description] = description if description && !description.empty?
+        kwargs[:field_definitions] = field_definitions if field_definitions&.any?
+        
+        # Add access if non-default
+        if access && (access["admin"] != true || access["storefront"] != true)
+          kwargs[:access] = access.transform_keys(&:to_sym)
+        end
+        
+        # Add capabilities if non-default
+        if capabilities&.any? { |_, v| v["enabled"] == true }
+          kwargs[:capabilities] = capabilities.transform_keys(&:to_sym).transform_values { |v| v.transform_keys(&:to_sym) }
+        end
+
+        args_string = args.map(&:inspect).join(", ")
+        kwargs_string = kwargs.map { |k, v| "#{k}: #{v.inspect}" }.join(", ")
+        content.puts "  create_metaobject_definition #{args_string}, #{kwargs_string}"
+      end
+
+    # Add blank line between metaobjects and metafields if both exist
+    if metaobject_definitions.any? && metafield_definitions.any?
+      content.puts ""
+    end
+
+    # Add metafield definitions
+    metafield_definitions
       .sort_by { [_1["ownerType"], _1["namespace"], _1["key"]] }
       .each do
         owner_type = _1["ownerType"].downcase.pluralize.to_sym
@@ -190,10 +294,10 @@ module ShopifyToolkit::Schema
         kwargs = { name: name }
         kwargs[:namespace] = namespace if namespace && namespace != :custom
         kwargs[:description] = description if description
-        kwargs[:validations] = validations if validations.present?
+        kwargs[:validations] = validations if validations&.any?
 
         # Only include capabilities if they have non-default values
-        if capabilities.present?
+        if capabilities&.any?
           has_non_default_capabilities =
             capabilities.any? do |cap, value|
               case cap
