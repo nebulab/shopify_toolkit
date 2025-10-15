@@ -73,6 +73,25 @@ module ShopifyToolkit::MetaobjectStatements
     result.dig("data", "metaobjectDefinitionByType", "id")
   end
 
+  def get_metaobject_definition_type_by_gid(gid)
+    result =
+      shopify_admin_client
+        .query(
+          query:
+            "# GraphQL
+              query GetMetaobjectDefinitionType($id: ID!) {
+                metaobjectDefinition(id: $id) {
+                  type
+                }
+              }",
+          variables: { id: gid },
+        )
+        .tap { handle_shopify_admin_client_errors(_1) }
+        .body
+
+    result.dig("data", "metaobjectDefinition", "type")
+  end
+
   def update_metaobject_definition(type, **options)
     existing_gid = get_metaobject_definition_gid(type)
 

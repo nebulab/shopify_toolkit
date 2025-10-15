@@ -8,6 +8,7 @@ require "active_support/core_ext/module/delegation"
 module ShopifyToolkit::Schema
   extend self
   include ShopifyToolkit::MetafieldStatements
+  include ShopifyToolkit::MetaobjectStatements
   include ShopifyToolkit::Migration::Logging
 
   delegate :logger, to: Rails
@@ -67,6 +68,43 @@ module ShopifyToolkit::Schema
 
   def define(&block)
     instance_eval(&block)
+  end
+
+  def convert_validations_gids_to_types(validations, metafield_type)
+    unless validations&.any? && is_metaobject_reference_type?(metafield_type)
+      return validations
+    end
+
+    validations.map do |validation|
+      if validation["name"] == "metaobject_definition_id"
+        value = validation["value"]
+        
+        if value.is_a?(Array)
+          # Handle array of GIDs (for list.metaobject_reference)
+          types = value.filter_map do |gid|
+            if gid&.start_with?("gid://shopify/MetaobjectDefinition/")
+              get_metaobject_definition_type_by_gid(gid)
+            else
+              gid # Keep non-GID values as-is
+            end
+          end
+          validation.merge("name" => "metaobject_definition_type", "value" => types)
+        elsif value&.start_with?("gid://shopify/MetaobjectDefinition/")
+          # Handle single GID
+          type = get_metaobject_definition_type_by_gid(value)
+          validation.merge("name" => "metaobject_definition_type", "value" => type)
+        else
+          validation
+        end
+      else
+        validation
+      end
+    end
+  end
+
+  def is_metaobject_reference_type?(type)
+    type_str = type.to_s
+    type_str == "metaobject_reference" || type_str == "list.metaobject_reference"
   end
 
   def fetch_definitions(owner_type:)
@@ -142,7 +180,7 @@ module ShopifyToolkit::Schema
         name = _1["name"]
         namespace = _1["namespace"]&.to_sym
         description = _1["description"]
-        validations = _1["validations"]&.map { |v| v.transform_keys(&:to_sym) }
+        validations = convert_validations_gids_to_types(_1["validations"], type)&.map { |v| v.transform_keys(&:to_sym) }
         capabilities =
           _1["capabilities"]
             &.transform_keys(&:to_sym)
