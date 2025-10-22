@@ -26,7 +26,31 @@ module ShopifyToolkit::MetaobjectStatements
       return existing_gid
     end
 
-    # https://shopify.dev/docs/api/admin-graphql/2024-10/mutations/metafieldDefinitionCreate
+    # Transform options for GraphQL API
+    definition = options.merge(type: type.to_s)
+
+    # Convert field_definitions to fieldDefinitions and transform field structure
+    if options[:field_definitions]
+      definition[:fieldDefinitions] = options[:field_definitions].map do |field|
+        field_def = {
+          key: field[:key].to_s,
+          name: field[:name],
+          type: field[:type].to_s
+        }
+        field_def[:description] = field[:description] if field[:description]
+        field_def[:required] = field[:required] if field[:required]
+
+        # Convert validations from types to GIDs if present
+        if field[:validations]
+          converted_validations = convert_validations_types_to_gids(field[:validations])
+          field_def[:validations] = converted_validations if converted_validations&.any?
+        end
+
+        field_def
+      end
+    end
+
+    # https://shopify.dev/docs/api/admin-graphql/2024-10/mutations/metaobjectDefinitionCreate
     query =
       "# GraphQL
       mutation CreateMetaobjectDefinition($definition: MetaobjectDefinitionCreateInput!) {
@@ -48,7 +72,7 @@ module ShopifyToolkit::MetaobjectStatements
         }
       }
       "
-    variables = { definition: { type:, **options } }
+    variables = { definition: definition }
 
     shopify_admin_client
       .query(query:, variables:)
