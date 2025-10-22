@@ -51,8 +51,18 @@ module ShopifyToolkit::Schema
     end
 
     announce "Loading metafield schema from #{path}"
-    say_with_time "Executing schema statements" do
-      load path
+
+    # Parse the schema file to separate metaobject and metafield definitions
+    schema_content = File.read(path)
+
+    say_with_time "Executing metaobject definitions" do
+      # Execute only metaobject definitions first
+      execute_metaobject_definitions(schema_content)
+    end
+
+    say_with_time "Executing metafield definitions" do
+      # Execute only metafield definitions after all metaobjects exist
+      execute_metafield_definitions(schema_content)
     end
   end
 
@@ -317,5 +327,44 @@ module ShopifyToolkit::Schema
 
     content.puts "end"
     content.string
+  end
+
+  def execute_metaobject_definitions(schema_content)
+    # Create a filtered version that only includes metaobject definitions
+    metaobject_content = filter_schema_content(schema_content, :metaobject)
+    eval_schema_content(metaobject_content)
+  end
+
+  def execute_metafield_definitions(schema_content)
+    # Create a filtered version that only includes metafield definitions
+    metafield_content = filter_schema_content(schema_content, :metafield)
+    eval_schema_content(metafield_content)
+  end
+
+  def filter_schema_content(schema_content, type)
+    lines = schema_content.lines
+    filtered_lines = []
+
+    # Always include the header and footer
+    filtered_lines << lines.first(8) # Header lines up to "ShopifyToolkit::Schema.define do"
+    filtered_lines.flatten!
+
+    lines.each do |line|
+      case type
+      when :metaobject
+        if line.strip.start_with?("create_metaobject_definition")
+          filtered_lines << line
+        end
+      when :metafield
+        filtered_lines << line if line.strip.start_with?("create_metafield")
+      end
+    end
+
+    filtered_lines << "end\n" # Closing line
+    filtered_lines.join
+  end
+
+  def eval_schema_content(content)
+    instance_eval(content)
   end
 end
