@@ -29,30 +29,39 @@ RSpec.describe ShopifyToolkit::Schema do
             "key" => "name",
             "name" => "Pattern Name",
             "description" => "The name of the pattern",
-            "type" => { "name" => "single_line_text_field" },
+            "type" => {
+              "name" => "single_line_text_field"
+            },
             "required" => true,
-            "validations" => [
-              { "name" => "min_length", "value" => "1" }
-            ]
+            "validations" => [{ "name" => "min_length", "value" => "1" }]
           },
           {
             "key" => "related_pattern",
             "name" => "Related Pattern",
             "description" => nil,
-            "type" => { "name" => "metaobject_reference" },
+            "type" => {
+              "name" => "metaobject_reference"
+            },
             "required" => false,
             "validations" => [
-              { "name" => "metaobject_definition_id", "value" => "gid://shopify/MetaobjectDefinition/456" }
+              {
+                "name" => "metaobject_definition_id",
+                "value" => "gid://shopify/MetaobjectDefinition/456"
+              }
             ]
           }
         ],
         "access" => {
-          "admin" => true,
-          "storefront" => false
+          "admin" => "MERCHANT_READ_WRITE",
+          "storefront" => "NONE"
         },
         "capabilities" => {
-          "publishable" => { "enabled" => true },
-          "translatable" => { "enabled" => false }
+          "publishable" => {
+            "enabled" => true
+          },
+          "translatable" => {
+            "enabled" => false
+          }
         }
       }
     ]
@@ -71,7 +80,9 @@ RSpec.describe ShopifyToolkit::Schema do
     ).and_return("size_chart")
 
     # Mock metaobject definitions fetch
-    allow(schema).to receive(:fetch_metaobject_definitions).and_return(metaobject_definitions)
+    allow(schema).to receive(:fetch_metaobject_definitions).and_return(
+      metaobject_definitions
+    )
   end
 
   describe "#dump!" do
@@ -105,9 +116,9 @@ RSpec.describe ShopifyToolkit::Schema do
           }
         },
         "access" => {
-          "admin" => true,
-          "customerAccount" => false,
-          "storefront" => false
+          "admin" => "MERCHANT_READ_WRITE",
+          "customerAccount" => "NONE",
+          "storefront" => "NONE"
         },
         "ownerType" => "PRODUCT"
       }
@@ -132,9 +143,9 @@ RSpec.describe ShopifyToolkit::Schema do
           }
         },
         "access" => {
-          "admin" => true,
-          "customerAccount" => true,
-          "storefront" => true
+          "admin" => "MERCHANT_READ_WRITE",
+          "customerAccount" => "PUBLIC_READ",
+          "storefront" => "PUBLIC_READ"
         },
         "ownerType" => "ARTICLE"
       }
@@ -165,9 +176,9 @@ RSpec.describe ShopifyToolkit::Schema do
           }
         },
         "access" => {
-          "admin" => true,
-          "customerAccount" => false,
-          "storefront" => false
+          "admin" => "MERCHANT_READ_WRITE",
+          "customerAccount" => "NONE",
+          "storefront" => "NONE"
         },
         "ownerType" => "PRODUCT"
       }
@@ -201,9 +212,9 @@ RSpec.describe ShopifyToolkit::Schema do
           }
         },
         "access" => {
-          "admin" => true,
-          "customerAccount" => false,
-          "storefront" => false
+          "admin" => "MERCHANT_READ_WRITE",
+          "customerAccount" => "NONE",
+          "storefront" => "NONE"
         },
         "ownerType" => "PRODUCT"
       }
@@ -218,10 +229,10 @@ RSpec.describe ShopifyToolkit::Schema do
       #
       # It's strongly recommended that you check this file into your version control system.
       ShopifyToolkit::Schema.define do
-        create_metaobject_definition :color_pattern, name: "Color Pattern", description: "Product color patterns", field_definitions: [{:key=>:name, :type=>:single_line_text_field, :name=>"Pattern Name", :description=>"The name of the pattern", :required=>true, :validations=>[{:name=>"min_length", :value=>"1"}]}, {:key=>:related_pattern, :type=>:metaobject_reference, :name=>"Related Pattern", :validations=>[{:name=>"metaobject_definition_type", :value=>"size_chart"}]}], access: {:admin=>true, :storefront=>false}, capabilities: {:publishable=>{:enabled=>true}, :translatable=>{:enabled=>false}}
+        create_metaobject_definition :color_pattern, name: "Color Pattern", description: "Product color patterns", field_definitions: [{:key=>:name, :type=>:single_line_text_field, :name=>"Pattern Name", :description=>"The name of the pattern", :required=>true, :validations=>[{:name=>"min_length", :value=>"1"}]}, {:key=>:related_pattern, :type=>:metaobject_reference, :name=>"Related Pattern", :validations=>[{:name=>"metaobject_definition_type", :value=>"size_chart"}]}], access: {"admin"=>"MERCHANT_READ_WRITE", "storefront"=>"NONE"}, capabilities: {:publishable=>{:enabled=>true}, :translatable=>{:enabled=>false}}
 
         create_metafield :articles, :my_metafield_2, :integer, name: "My Metafield 2", namespace: :my_namespace, capabilities: {:smartCollectionCondition=>{:enabled=>false}, :adminFilterable=>{:enabled=>true}}
-        create_metafield :products, :allowed_patterns, :"list.metaobject_reference", name: "Allowed Patterns", description: "List of allowed patterns", validations: [{:name=>"metaobject_definition_type", :value=>["color_pattern", "size_chart"]}]
+        create_metafield :products, :allowed_patterns, :"list.metaobject_reference", name: "Allowed Patterns", description: "List of allowed patterns", validations: [{:name=>"metaobject_definition_types", :value=>["color_pattern", "size_chart"]}]
         create_metafield :products, :color_pattern, :metaobject_reference, name: "Color Pattern", description: "Product color pattern", validations: [{:name=>"metaobject_definition_type", :value=>"color_pattern"}]
         create_metafield :products, :my_metafield, :single_line_text_field, name: "My Metafield", description: "My description", validations: [{:name=>"min_length", :value=>"1"}, {:name=>"max_length", :value=>"10"}], capabilities: {:smartCollectionCondition=>{:enabled=>true}, :adminFilterable=>{:enabled=>false}}
       end
@@ -236,10 +247,10 @@ RSpec.describe ShopifyToolkit::Schema do
       #
       # It's strongly recommended that you check this file into your version control system.
       ShopifyToolkit::Schema.define do
-        create_metaobject_definition :color_pattern, name: "Color Pattern", description: "Product color patterns", field_definitions: [{key: :name, type: :single_line_text_field, name: "Pattern Name", description: "The name of the pattern", required: true, validations: [{name: "min_length", value: "1"}]}, {key: :related_pattern, type: :metaobject_reference, name: "Related Pattern", validations: [{name: "metaobject_definition_type", value: "size_chart"}]}], access: {admin: true, storefront: false}, capabilities: {publishable: {enabled: true}, translatable: {enabled: false}}
+        create_metaobject_definition :color_pattern, name: "Color Pattern", description: "Product color patterns", field_definitions: [{key: :name, type: :single_line_text_field, name: "Pattern Name", description: "The name of the pattern", required: true, validations: [{name: "min_length", value: "1"}]}, {key: :related_pattern, type: :metaobject_reference, name: "Related Pattern", validations: [{name: "metaobject_definition_type", value: "size_chart"}]}], access: {"admin" => "MERCHANT_READ_WRITE", "storefront" => "NONE"}, capabilities: {publishable: {enabled: true}, translatable: {enabled: false}}
 
         create_metafield :articles, :my_metafield_2, :integer, name: "My Metafield 2", namespace: :my_namespace, capabilities: {smartCollectionCondition: {enabled: false}, adminFilterable: {enabled: true}}
-        create_metafield :products, :allowed_patterns, :"list.metaobject_reference", name: "Allowed Patterns", description: "List of allowed patterns", validations: [{name: "metaobject_definition_type", value: ["color_pattern", "size_chart"]}]
+        create_metafield :products, :allowed_patterns, :"list.metaobject_reference", name: "Allowed Patterns", description: "List of allowed patterns", validations: [{name: "metaobject_definition_types", value: ["color_pattern", "size_chart"]}]
         create_metafield :products, :color_pattern, :metaobject_reference, name: "Color Pattern", description: "Product color pattern", validations: [{name: "metaobject_definition_type", value: "color_pattern"}]
         create_metafield :products, :my_metafield, :single_line_text_field, name: "My Metafield", description: "My description", validations: [{name: "min_length", value: "1"}, {name: "max_length", value: "10"}], capabilities: {smartCollectionCondition: {enabled: true}, adminFilterable: {enabled: false}}
       end
@@ -309,7 +320,7 @@ RSpec.describe ShopifyToolkit::Schema do
       expect(result).to eq(
         [
           {
-            "name" => "metaobject_definition_type",
+            "name" => "metaobject_definition_types",
             "value" => %w[color_pattern size_chart]
           }
         ]
@@ -332,7 +343,7 @@ RSpec.describe ShopifyToolkit::Schema do
       expect(result).to eq(
         [
           {
-            "name" => "metaobject_definition_type",
+            "name" => "metaobject_definition_types",
             "value" => %w[color_pattern some_other_value]
           }
         ]
@@ -376,6 +387,56 @@ RSpec.describe ShopifyToolkit::Schema do
         ]
       )
     end
+
+    it "converts array of metaobject definition IDs using plural name for list.mixed_reference fields" do
+      validations = [
+        {
+          "name" => "metaobject_definition_ids",
+          "value" => %w[
+            gid://shopify/MetaobjectDefinition/123
+            gid://shopify/MetaobjectDefinition/456
+          ]
+        }
+      ]
+      result =
+        schema.convert_validations_gids_to_types(
+          validations,
+          "list.mixed_reference"
+        )
+
+      expect(result).to eq(
+        [
+          {
+            "name" => "metaobject_definition_types",
+            "value" => %w[color_pattern size_chart]
+          }
+        ]
+      )
+    end
+
+    it "handles JSON string arrays for metaobject_definition_ids" do
+      validations = [
+        {
+          "name" => "metaobject_definition_ids",
+          "value" =>
+            "[\"gid://shopify/MetaobjectDefinition/123\",\"gid://shopify/MetaobjectDefinition/456\"]"
+        }
+      ]
+      result =
+        schema.convert_validations_gids_to_types(
+          validations,
+          "list.mixed_reference"
+        )
+
+      expect(result).to eq(
+        [
+          {
+            "name" => "metaobject_definition_types",
+            "value" => %w[color_pattern size_chart]
+          }
+        ]
+      )
+    end
   end
 
   describe "#is_metaobject_reference_type?" do
@@ -396,6 +457,20 @@ RSpec.describe ShopifyToolkit::Schema do
       ).to be true
       expect(
         schema.is_metaobject_reference_type?(:"list.metaobject_reference")
+      ).to be true
+    end
+
+    it "returns true for mixed_reference" do
+      expect(schema.is_metaobject_reference_type?("mixed_reference")).to be true
+      expect(schema.is_metaobject_reference_type?(:mixed_reference)).to be true
+    end
+
+    it "returns true for list.mixed_reference" do
+      expect(
+        schema.is_metaobject_reference_type?("list.mixed_reference")
+      ).to be true
+      expect(
+        schema.is_metaobject_reference_type?(:"list.mixed_reference")
       ).to be true
     end
 

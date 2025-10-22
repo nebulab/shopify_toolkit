@@ -9,6 +9,7 @@ module ShopifyToolkit::Schema
   extend self
   include ShopifyToolkit::MetafieldStatements
   include ShopifyToolkit::MetaobjectStatements
+  include ShopifyToolkit::MetaobjectUtilities
   include ShopifyToolkit::Migration::Logging
 
   delegate :logger, to: Rails
@@ -81,40 +82,63 @@ module ShopifyToolkit::Schema
   end
 
   def convert_validations_gids_to_types(validations, metafield_type)
-    unless validations&.any? && is_metaobject_reference_type?(metafield_type)
-      return validations
-    end
+    return validations unless validations&.any? && is_metaobject_reference_type?(metafield_type)
 
-    validations.map do |validation|
-      if validation["name"] == "metaobject_definition_id"
-        value = validation["value"]
-        
-        if value.is_a?(Array)
-          # Handle array of GIDs (for list.metaobject_reference)
-          types = value.filter_map do |gid|
-            if gid&.start_with?("gid://shopify/MetaobjectDefinition/")
-              get_metaobject_definition_type_by_gid(gid)
-            else
-              gid # Keep non-GID values as-is
-            end
-          end
-          validation.merge("name" => "metaobject_definition_type", "value" => types)
-        elsif value&.start_with?("gid://shopify/MetaobjectDefinition/")
-          # Handle single GID
-          type = get_metaobject_definition_type_by_gid(value)
-          validation.merge("name" => "metaobject_definition_type", "value" => type)
-        else
-          validation
-        end
-      else
-        validation
-      end
+    validations.filter_map do |validation|
+      convert_metaobject_validation_to_type(validation)
     end
   end
 
-  def is_metaobject_reference_type?(type)
-    type_str = type.to_s
-    type_str == "metaobject_reference" || type_str == "list.metaobject_reference"
+  private
+
+  def convert_metaobject_validation_to_type(validation)
+    name = validation["name"]
+    value = validation["value"]
+
+    return validation unless metaobject_gid_validation?(name)
+
+    parsed_value = parse_json_if_needed(value)
+    convert_gids_to_types(validation, parsed_value)
+  end
+
+  def metaobject_gid_validation?(name)
+    name.in?(["metaobject_definition_id", "metaobject_definition_ids"])
+  end
+
+  def convert_gids_to_types(validation, value)
+    if value.is_a?(Array)
+      convert_array_gids_to_types(validation, value)
+    else
+      convert_single_gid_to_type(validation, value)
+    end
+  end
+
+  def convert_array_gids_to_types(validation, gids)
+    types = gids.filter_map { |gid| convert_gid_to_type_if_valid(gid) }
+
+    return nil unless types.any?
+
+    validation.merge("name" => "metaobject_definition_types", "value" => types)
+  end
+
+  def convert_single_gid_to_type(validation, gid)
+    type = convert_gid_to_type_if_valid(gid)
+
+    return nil unless type
+
+    validation.merge("name" => "metaobject_definition_type", "value" => type)
+  end
+
+  def convert_gid_to_type_if_valid(gid)
+    return gid unless gid&.start_with?("gid://shopify/MetaobjectDefinition/")
+
+    type = get_metaobject_definition_type_by_gid(gid)
+
+    if type.nil?
+      say "Warning: Metafield validation references unknown metaobject GID #{gid} - excluding from portable schema"
+    end
+
+    type
   end
 
   def fetch_definitions(owner_type:)
@@ -252,7 +276,7 @@ module ShopifyToolkit::Schema
           elsif field["validations"]&.any?
             field_hash[:validations] = field["validations"]&.map { |v| v.transform_keys(&:to_sym) }
           end
-          
+
           field_hash
         end
 
@@ -263,12 +287,8 @@ module ShopifyToolkit::Schema
         kwargs = { name: name }
         kwargs[:description] = description if description && !description.empty?
         kwargs[:field_definitions] = field_definitions if field_definitions&.any?
-        
-        # Add access if non-default
-        if access && (access["admin"] != true || access["storefront"] != true)
-          kwargs[:access] = access.transform_keys(&:to_sym)
-        end
-        
+        kwargs[:access] = access if access&.any?
+
         # Add capabilities if non-default
         if capabilities&.any? { |_, v| v["enabled"] == true }
           kwargs[:capabilities] = capabilities.transform_keys(&:to_sym).transform_values { |v| v.transform_keys(&:to_sym) }
