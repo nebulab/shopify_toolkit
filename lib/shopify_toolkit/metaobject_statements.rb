@@ -6,6 +6,7 @@ module ShopifyToolkit::MetaobjectStatements
   extend ActiveSupport::Concern
   include ShopifyToolkit::Migration::Logging
   include ShopifyToolkit::AdminClient
+  include ShopifyToolkit::MetaobjectUtilities
 
   def self.log_time(method_name)
     current_method = instance_method(method_name)
@@ -18,7 +19,7 @@ module ShopifyToolkit::MetaobjectStatements
   # @param namespace: if nil the metafield will be app-specific (default: :custom)
   log_time \
   def create_metaobject_definition(type, **options)
-    # Skip creation if metafield already exists
+    # Skip creation if metaobject already exists
     existing_gid = get_metaobject_definition_gid(type)
     if existing_gid
       say "Metaobject #{type} already exists, skipping creation"
@@ -52,44 +53,6 @@ module ShopifyToolkit::MetaobjectStatements
     shopify_admin_client
       .query(query:, variables:)
       .tap { handle_shopify_admin_client_errors(_1, "data.metaobjectDefinitionCreate.userErrors") }
-  end
-
-  def get_metaobject_definition_gid(type)
-    result =
-      shopify_admin_client
-        .query(
-          query:
-            "# GraphQL
-              query GetMetaobjectDefinitionID($type: String!) {
-                metaobjectDefinitionByType(type: $type) {
-                  id
-                }
-              }",
-          variables: { type: type.to_s },
-        )
-        .tap { handle_shopify_admin_client_errors(_1) }
-        .body
-
-    result.dig("data", "metaobjectDefinitionByType", "id")
-  end
-
-  def get_metaobject_definition_type_by_gid(gid)
-    result =
-      shopify_admin_client
-        .query(
-          query:
-            "# GraphQL
-              query GetMetaobjectDefinitionType($id: ID!) {
-                metaobjectDefinition(id: $id) {
-                  type
-                }
-              }",
-          variables: { id: gid },
-        )
-        .tap { handle_shopify_admin_client_errors(_1) }
-        .body
-
-    result.dig("data", "metaobjectDefinition", "type")
   end
 
   def update_metaobject_definition(type, **options)

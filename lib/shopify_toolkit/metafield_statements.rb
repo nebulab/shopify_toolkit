@@ -6,6 +6,7 @@ module ShopifyToolkit::MetafieldStatements
   extend ActiveSupport::Concern
   include ShopifyToolkit::Migration::Logging
   include ShopifyToolkit::AdminClient
+  include ShopifyToolkit::MetaobjectUtilities
 
   def self.log_time(method_name)
     current_method = instance_method(method_name)
@@ -53,39 +54,6 @@ module ShopifyToolkit::MetafieldStatements
     shopify_admin_client
       .query(query:, variables:)
       .tap { handle_shopify_admin_client_errors(_1, "data.metafieldDefinitionCreate.userErrors") }
-  end
-
-  def is_metaobject_reference_type?(type)
-    type_str = type.to_s
-    type_str == "metaobject_reference" || type_str == "list.metaobject_reference"
-  end
-
-  def convert_validations_types_to_gids(validations)
-    return validations unless validations&.any?
-
-    validations.map do |validation|
-      validation_name = validation[:name] || validation["name"]
-      validation_value = validation[:value] || validation["value"]
-      
-      if validation_name == "metaobject_definition_type" && validation_value
-        if validation_value.is_a?(Array)
-          # Handle array of types (for list.metaobject_reference)
-          gids = validation_value.map do |type|
-            gid = get_metaobject_definition_gid(type)
-            raise "Metaobject type '#{type}' not found" unless gid
-            gid
-          end
-          { name: "metaobject_definition_id", value: gids }
-        else
-          # Handle single type
-          gid = get_metaobject_definition_gid(validation_value)
-          raise "Metaobject type '#{validation_value}' not found" unless gid
-          { name: "metaobject_definition_id", value: gid }
-        end
-      else
-        validation
-      end
-    end
   end
 
   def get_metafield_gid(owner_type, key, namespace: :custom)
