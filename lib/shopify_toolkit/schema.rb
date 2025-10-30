@@ -59,6 +59,7 @@ module ShopifyToolkit::Schema
     say_with_time "Executing metaobject definitions" do
       # Execute only metaobject definitions first
       execute_metaobject_definitions(schema_content)
+      apply_pending_field_validations
     end
 
     say_with_time "Executing metafield definitions" do
