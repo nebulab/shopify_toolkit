@@ -101,6 +101,40 @@ ShopifyToolkit::MetafieldSchema.define do
 end
 ```
 
+### Monkey Patching for Specific Use Cases
+
+In some scenarios, you may need to customize the behavior of ShopifyToolkit to handle specific limitations or requirements. For example, you might want to skip certain Shopify-managed metaobject definitions that cannot be created due to reserved namespaces or limited access permissions.
+
+```rb
+# config/initializers/shopify_toolkit_patches.rb
+
+require "shopify_toolkit/metaobject_statements"
+
+module ShopifyToolkit
+  module MetaobjectStatements
+    # Override create_metaobject_definition to skip Shopify-managed definitions
+    alias_method :original_create_metaobject_definition, :create_metaobject_definition
+
+    def create_metaobject_definition(type, **options)
+      # Skip Shopify-managed metaobject definitions during schema load
+      if type.to_s.start_with?("shopify--")
+        say "Skipping Shopify-managed metaobject definition: #{type}"
+        return
+      end
+
+      original_create_metaobject_definition(type, **options)
+    end
+  end
+end
+```
+
+This approach allows you to:
+
+- Skip creation of reserved metaobject types (e.g., those prefixed with `shopify--`)
+- Handle cases where certain metaobjects cannot be created due to API limitations
+- Customize validation logic for specific metaobject types
+- Filter out problematic metafield references during schema loading
+
 ### Analyzing a Matrixify CSV Result files
 
 Matrixify is a popular Shopify app that allows you to import/export data from Shopify using CSV files. The CSV files that Matrixify generates are very verbose and can be difficult to work with. This tool allows you to analyze the CSV files and extract the data you need.

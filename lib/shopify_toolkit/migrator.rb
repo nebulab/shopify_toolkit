@@ -6,6 +6,7 @@ require "active_support/core_ext/module/delegation"
 class ShopifyToolkit::Migrator # :nodoc:
   include ShopifyToolkit::AdminClient
   include ShopifyToolkit::MetafieldStatements
+  include ShopifyToolkit::MetaobjectStatements
 
   singleton_class.attr_accessor :migrations_paths
   self.migrations_paths = ["config/shopify/migrate"]

@@ -6,6 +6,7 @@ module ShopifyToolkit::MetafieldStatements
   extend ActiveSupport::Concern
   include ShopifyToolkit::Migration::Logging
   include ShopifyToolkit::AdminClient
+  include ShopifyToolkit::MetaobjectUtilities
 
   def self.log_time(method_name)
     current_method = instance_method(method_name)
@@ -24,6 +25,21 @@ module ShopifyToolkit::MetafieldStatements
     if get_metafield_gid(owner_type, key, namespace: namespace)
       say "Metafield #{namespace}:#{key} already exists for #{owner_type}, skipping creation"
       return
+    end
+
+    # Process validations to convert metaobject types to GIDs (only for metaobject reference fields)
+    if options[:validations] && is_metaobject_reference_type?(type)
+      begin
+        options[:validations] = convert_validations_types_to_gids(options[:validations])
+      rescue RuntimeError => e
+        if e.message.include?("not found")
+          say "ERROR: Cannot create metafield #{namespace}:#{key} - references non-existent metaobject. This suggests the metaobject was filtered out or failed to create."
+          say "       Original error: #{e.message}"
+          return
+        else
+          raise e
+        end
+      end
     end
 
     # https://shopify.dev/docs/api/admin-graphql/2024-10/mutations/metafieldDefinitionCreate
@@ -115,6 +131,11 @@ module ShopifyToolkit::MetafieldStatements
     unless get_metafield_gid(owner_type, key, namespace: namespace)
       say "Metafield #{namespace}:#{key} not found for #{owner_type}, skipping update"
       return
+    end
+
+    # Process validations to convert metaobject types to GIDs (only for metaobject reference fields)
+    if options[:validations] && options[:type] && is_metaobject_reference_type?(options[:type])
+      options[:validations] = convert_validations_types_to_gids(options[:validations])
     end
 
     shopify_admin_client
