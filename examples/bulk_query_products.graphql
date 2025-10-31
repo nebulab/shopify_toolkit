@@ -1,0 +1,25 @@
+{
+  products {
+    edges {
+      node {
+        id
+        title
+        handle
+        productType
+        vendor
+        createdAt
+        updatedAt
+        variants {
+          edges {
+            node {
+              id
+              title
+              price
+              inventoryQuantity
+            }
+          }
+        }
+      }
+    }
+  }
+}
