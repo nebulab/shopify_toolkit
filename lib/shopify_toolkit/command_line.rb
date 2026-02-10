@@ -59,31 +59,31 @@ class ShopifyToolkit::CommandLine < Thor
   desc "migrate", "Run migrations"
   def migrate
     require "./config/environment"
-    ::Shop.sole.with_shopify_session { ShopifyToolkit::Migrator.new.up }
+    shop.with_shopify_session { ShopifyToolkit::Migrator.new.up }
   end
 
   desc "rollback", "Rollback last migration"
   def rollback
     require "./config/environment"
-    ::Shop.sole.with_shopify_session { ShopifyToolkit::Migrator.new.down }
+    shop.with_shopify_session { ShopifyToolkit::Migrator.new.down }
   end
 
-  desc "redo", "Run migrations down and up again"
+  desc "redo", "Run the last migration down and up again"
   def redo
     require "./config/environment"
-    ::Shop.sole.with_shopify_session { ShopifyToolkit::Migrator.new.redo }
+    shop.with_shopify_session { ShopifyToolkit::Migrator.new.redo }
   end
 
   desc "schema_load", 'Load schema from "config/shopify/schema.rb"'
   def schema_load
     require "./config/environment"
-    ::Shop.sole.with_shopify_session { ShopifyToolkit::Schema.load! }
+    shop.with_shopify_session { ShopifyToolkit::Schema.load! }
   end
 
   desc "schema_dump", 'Dump schema to "config/shopify/schema.rb"'
   def schema_dump
     require "./config/environment"
-    ::Shop.sole.with_shopify_session { ShopifyToolkit::Schema.dump! }
+    shop.with_shopify_session { ShopifyToolkit::Schema.dump! }
   end
 
   desc "generate_migration NAME", "Generate a migration with the given NAME"
@@ -113,5 +113,11 @@ class ShopifyToolkit::CommandLine < Thor
 
   def self.exit_on_failure?
     true
+  end
+
+  private
+
+  def shop
+    @shop ||= ENV["SHOPIFY_DOMAIN"].presence ? ::Shop.find_by!(shopify_domain: ENV["SHOPIFY_DOMAIN"]) : ::Shop.sole
   end
 end

@@ -237,6 +237,18 @@ module ShopifyToolkit::Schema
     result.dig("data", "metaobjectDefinitions", "nodes") || []
   end
 
+  # Check if a metafield definition is Shopify-proprietary
+  # Shopify-proprietary items should not be dumped as they are managed by Shopify
+  def shopify_proprietary?(definition)
+    namespace = definition["namespace"]
+    return false if namespace.nil?
+
+    # Shopify-proprietary namespaces:
+    # - "shopify" namespace
+    # - Namespaces starting with "shopify--"
+    namespace == "shopify" || namespace.start_with?("shopify--")
+  end
+
   def generate_schema_content
     metaobject_definitions = fetch_metaobject_definitions
     metafield_definitions =
@@ -306,7 +318,9 @@ module ShopifyToolkit::Schema
     end
 
     # Add metafield definitions
+    # Sort for consistent output and filter out Shopify-proprietary items
     metafield_definitions
+      .reject { |definition| shopify_proprietary?(definition) }
       .sort_by { [_1["ownerType"], _1["namespace"], _1["key"]] }
       .each do
         owner_type = _1["ownerType"].downcase.pluralize.to_sym

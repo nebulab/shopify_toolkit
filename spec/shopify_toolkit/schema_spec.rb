@@ -269,6 +269,61 @@ RSpec.describe ShopifyToolkit::Schema do
         )
       expect(root.join("config/shopify/schema.rb").read).to eq(expected_schema)
     end
+
+    context "with Shopify-proprietary metafields" do
+      let(:shopify_metafield) do
+        {
+          "id" => "gid://shopify/MetafieldDefinition/3",
+          "name" => "Dog age group",
+          "key" => "dog-age-group",
+          "type" => { "name" => "list.metaobject_reference" },
+          "namespace" => "shopify",
+          "description" => "Helps sort dog supplies",
+          "validations" => [],
+          "capabilities" => {},
+          "access" => { "admin" => true, "customerAccount" => false, "storefront" => false },
+          "ownerType" => "PRODUCT"
+        }
+      end
+
+      let(:shopify_discovery_metafield) do
+        {
+          "id" => "gid://shopify/MetafieldDefinition/4",
+          "name" => "Related products",
+          "key" => "related_products",
+          "type" => { "name" => "list.product_reference" },
+          "namespace" => "shopify--discovery--product_recommendation",
+          "description" => "List of related products",
+          "validations" => [],
+          "capabilities" => {},
+          "access" => { "admin" => true, "customerAccount" => false, "storefront" => true },
+          "ownerType" => "PRODUCT"
+        }
+      end
+
+      let(:definitions_by_owner) do
+        {
+          products: [product_definition, shopify_metafield, shopify_discovery_metafield],
+          articles: [article_definition]
+        }
+      end
+
+      it "excludes Shopify-proprietary metafields from the dump" do
+        schema.dump!
+
+        dumped_schema = root.join("config/shopify/schema.rb").read
+
+        # Should include custom metafields
+        expect(dumped_schema).to include("create_metafield :products, :my_metafield")
+        expect(dumped_schema).to include("create_metafield :articles, :my_metafield_2")
+
+        # Should NOT include Shopify-proprietary metafields
+        expect(dumped_schema).not_to include("dog-age-group")
+        expect(dumped_schema).not_to include("related_products")
+        expect(dumped_schema).not_to include("namespace: :shopify")
+        expect(dumped_schema).not_to include("shopify--discovery")
+      end
+    end
   end
 
   describe "#convert_validations_gids_to_types" do
