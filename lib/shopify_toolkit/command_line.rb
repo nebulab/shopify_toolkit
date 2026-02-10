@@ -118,6 +118,6 @@ class ShopifyToolkit::CommandLine < Thor
   private
 
   def shop
-    @shop ||= ENV["SHOPIFY_DOMAIN"].presence ? ::Shop.find_by!(shopify_domain: ENV["SHOPIFY_DOMAIN"]) : ::Shop.sole
+    @shop ||= ENV["SHOPIFY_DOMAIN"] ? ::Shop.find_by!(shopify_domain: ENV["SHOPIFY_DOMAIN"]) : ::Shop.sole
   end
 end
