@@ -225,6 +225,36 @@ module ShopifyToolkit::MetaobjectStatements
       .tap { handle_shopify_admin_client_errors(_1, "data.metaobjectDefinitionUpdate.userErrors") }
   end
 
+  log_time \
+  def delete_metaobject_definition(type)
+    existing_gid = get_metaobject_definition_gid(type)
+
+    unless existing_gid
+      say "Metaobject #{type} does not exist, skipping deletion"
+      return
+    end
+
+    # https://shopify.dev/docs/api/admin-graphql/2024-10/mutations/metaobjectDefinitionDelete
+    query =
+      "# GraphQL
+      mutation DeleteMetaobjectDefinition($id: ID!) {
+        metaobjectDefinitionDelete(id: $id) {
+          deletedId
+          userErrors {
+            field
+            message
+            code
+          }
+        }
+      }
+      "
+    variables = { id: existing_gid }
+
+    shopify_admin_client
+      .query(query:, variables:)
+      .tap { handle_shopify_admin_client_errors(_1, "data.metaobjectDefinitionDelete.userErrors") }
+  end
+
   def self.define(&block)
     context = Object.new
     context.extend(self)
