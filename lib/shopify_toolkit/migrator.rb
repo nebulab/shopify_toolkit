@@ -20,7 +20,20 @@ class ShopifyToolkit::Migrator # :nodoc:
   end
 
   def current_version
-    migrated.max || 0
+    migrated_versions.max || 0
+  end
+
+  def assume_migrated_upto_version(version)
+    version = version.to_i
+    return if version.zero?
+
+    assumed_versions = migrations.map(&:version).select { _1 < version }
+    new_versions = (assumed_versions << version) - migrated_versions
+    return if new_versions.empty?
+
+    migrated_versions.concat(new_versions)
+
+    update_metafield
   end
 
   def up

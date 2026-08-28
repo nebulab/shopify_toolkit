@@ -56,15 +56,21 @@ module ShopifyToolkit::Schema
     # Parse the schema file to separate metaobject and metafield definitions
     schema_content = File.read(path)
 
+    version = nil
+
     say_with_time "Executing metaobject definitions" do
       # Execute only metaobject definitions first
-      execute_metaobject_definitions(schema_content)
+      version = execute_metaobject_definitions(schema_content)
       apply_pending_field_validations
     end
 
     say_with_time "Executing metafield definitions" do
       # Execute only metafield definitions after all metaobjects exist
-      execute_metafield_definitions(schema_content)
+      version = execute_metafield_definitions(schema_content) || version
+    end
+
+    if version && version.to_i.positive?
+      ShopifyToolkit::Migrator.new.assume_migrated_upto_version(version)
     end
   end
 
@@ -73,13 +79,15 @@ module ShopifyToolkit::Schema
 
     announce "Dumping metafield schema to #{schema_path}"
     say_with_time "Generating schema" do
-      content = generate_schema_content
+      version = ShopifyToolkit::Migrator.new.current_version
+      content = generate_schema_content(version:)
       File.write(schema_path, content)
     end
   end
 
-  def define(&block)
+  def define(version: nil, &block)
     instance_eval(&block)
+    version
   end
 
   def convert_validations_gids_to_types(validations, metafield_type)
@@ -249,7 +257,7 @@ module ShopifyToolkit::Schema
     namespace == "shopify" || namespace.start_with?("shopify--")
   end
 
-  def generate_schema_content
+  def generate_schema_content(version:)
     metaobject_definitions = fetch_metaobject_definitions
     metafield_definitions =
       OWNER_TYPES.flat_map { |owner_type| fetch_definitions(owner_type:) }
@@ -263,7 +271,7 @@ module ShopifyToolkit::Schema
       # This file is the source used to define your metafields when running `bin/rails shopify:schema:load`.
       #
       # It's strongly recommended that you check this file into your version control system.
-      ShopifyToolkit::Schema.define do
+      ShopifyToolkit::Schema.define(version: #{formatted_version(version)}) do
     RUBY
 
     # Add metaobject definitions first
@@ -362,6 +370,14 @@ module ShopifyToolkit::Schema
 
     content.puts "end"
     content.string
+  end
+
+  # Turns 20250627144019 into "2025_06_27_144019".
+  def formatted_version(version)
+    stringified = version.to_s
+    return stringified unless stringified.length == 14
+
+    stringified.insert(4, "_").insert(7, "_").insert(10, "_")
   end
 
   def execute_metaobject_definitions(schema_content)

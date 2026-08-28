@@ -86,7 +86,16 @@ RSpec.describe ShopifyToolkit::Schema do
   end
 
   describe "#dump!" do
+    let(:migrator) do
+      instance_double(
+        ShopifyToolkit::Migrator,
+        current_version: 20250627144019
+      )
+    end
+
     before do
+      allow(ShopifyToolkit::Migrator).to receive(:new).and_return(migrator)
+
       ShopifyToolkit::Schema::OWNER_TYPES.each do |owner_type|
         allow(schema).to receive(:fetch_definitions).with(
           owner_type: owner_type
@@ -228,7 +237,7 @@ RSpec.describe ShopifyToolkit::Schema do
       # This file is the source used to define your metafields when running `bin/rails shopify:schema:load`.
       #
       # It's strongly recommended that you check this file into your version control system.
-      ShopifyToolkit::Schema.define do
+      ShopifyToolkit::Schema.define(version: 2025_06_27_144019) do
         create_metaobject_definition :color_pattern, name: "Color Pattern", description: "Product color patterns", field_definitions: [{:key=>:name, :type=>:single_line_text_field, :name=>"Pattern Name", :description=>"The name of the pattern", :required=>true, :validations=>[{:name=>"min_length", :value=>"1"}]}, {:key=>:related_pattern, :type=>:metaobject_reference, :name=>"Related Pattern", :validations=>[{:name=>"metaobject_definition_type", :value=>"size_chart"}]}], access: {"admin"=>"MERCHANT_READ_WRITE", "storefront"=>"NONE"}, capabilities: {:publishable=>{:enabled=>true}, :translatable=>{:enabled=>false}}
 
         create_metafield :articles, :my_metafield_2, :integer, name: "My Metafield 2", namespace: :my_namespace, capabilities: {:smartCollectionCondition=>{:enabled=>false}, :adminFilterable=>{:enabled=>true}}
@@ -246,7 +255,7 @@ RSpec.describe ShopifyToolkit::Schema do
       # This file is the source used to define your metafields when running `bin/rails shopify:schema:load`.
       #
       # It's strongly recommended that you check this file into your version control system.
-      ShopifyToolkit::Schema.define do
+      ShopifyToolkit::Schema.define(version: 2025_06_27_144019) do
         create_metaobject_definition :color_pattern, name: "Color Pattern", description: "Product color patterns", field_definitions: [{key: :name, type: :single_line_text_field, name: "Pattern Name", description: "The name of the pattern", required: true, validations: [{name: "min_length", value: "1"}]}, {key: :related_pattern, type: :metaobject_reference, name: "Related Pattern", validations: [{name: "metaobject_definition_type", value: "size_chart"}]}], access: {"admin" => "MERCHANT_READ_WRITE", "storefront" => "NONE"}, capabilities: {publishable: {enabled: true}, translatable: {enabled: false}}
 
         create_metafield :articles, :my_metafield_2, :integer, name: "My Metafield 2", namespace: :my_namespace, capabilities: {smartCollectionCondition: {enabled: false}, adminFilterable: {enabled: true}}
@@ -323,6 +332,58 @@ RSpec.describe ShopifyToolkit::Schema do
         expect(dumped_schema).not_to include("namespace: :shopify")
         expect(dumped_schema).not_to include("shopify--discovery")
       end
+    end
+  end
+
+  describe "#load!" do
+    let(:migrator) { instance_double(ShopifyToolkit::Migrator) }
+    let(:schema_path) { root.join(ShopifyToolkit::Schema::SCHEMA_PATH) }
+    let(:schema_header) do
+      <<~RUBY
+        # This file is auto-generated from the current state of the Shopify metafields and metaobjects.
+        # Instead of editing this file, please use the migration features of ShopifyToolkit
+        # to incrementally modify your metafields and metaobjects, and then regenerate this schema definition.
+        #
+        # This file is the source used to define your metafields when running `bin/rails shopify:schema:load`.
+        #
+        # It's strongly recommended that you check this file into your version control system.
+      RUBY
+    end
+
+    it "marks migrations through the schema version as migrated" do
+      schema_path.write(<<~RUBY)
+        #{schema_header}ShopifyToolkit::Schema.define(version: 2025_06_27_144019) do
+        end
+      RUBY
+
+      allow(ShopifyToolkit::Migrator).to receive(:new).and_return(migrator)
+      expect(migrator).to receive(:assume_migrated_upto_version).with(20250627144019).once
+
+      schema.load!
+    end
+
+    it "does not update the migration version when a schema statement fails" do
+      schema_path.write(<<~RUBY)
+        #{schema_header}ShopifyToolkit::Schema.define(version: 2025_06_27_144019) do
+          create_metafield :products, :broken, :single_line_text_field, name: "Broken"
+        end
+      RUBY
+
+      allow(schema).to receive(:create_metafield).and_raise("schema failure")
+      expect(ShopifyToolkit::Migrator).not_to receive(:new)
+
+      expect { schema.load! }.to raise_error("schema failure")
+    end
+
+    it "continues to load schema files without a version" do
+      schema_path.write(<<~RUBY)
+        #{schema_header}ShopifyToolkit::Schema.define do
+        end
+      RUBY
+
+      expect(ShopifyToolkit::Migrator).not_to receive(:new)
+
+      expect { schema.load! }.not_to raise_error
     end
   end
 
